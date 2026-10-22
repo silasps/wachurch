@@ -1,13 +1,15 @@
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
-import { COLOR_PALETTE } from '@/types'
 import type { SiteConfig, SitePost } from '@/types'
+import { coresDoSite } from '@/lib/cores'
 
 interface SiteRendererProps {
   siteConfig: SiteConfig
   posts: SitePost[]
   orgNome: string
   previewMode?: boolean
+  /** Org com módulo Igreja: mostra o convite para o cadastro de membros (/cadastro) */
+  cadastroMembros?: boolean
 }
 
 const CATEGORIA_LABEL: Record<string, string> = {
@@ -16,9 +18,8 @@ const CATEGORIA_LABEL: Record<string, string> = {
   galeria: 'Galeria',
 }
 
-export default function SiteRenderer({ siteConfig, posts, orgNome, previewMode }: SiteRendererProps) {
-  const colors = COLOR_PALETTE[siteConfig.cor_primaria as keyof typeof COLOR_PALETTE]
-    || COLOR_PALETTE['azul-oceano']
+export default function SiteRenderer({ siteConfig, posts, orgNome, previewMode, cadastroMembros }: SiteRendererProps) {
+  const colors = coresDoSite(siteConfig)
 
   const projetosPosts = posts.filter(p =>
     siteConfig.secoes_ativas.includes('projetos') &&
@@ -71,15 +72,25 @@ export default function SiteRenderer({ siteConfig, posts, orgNome, previewMode }
                 {siteConfig.hero_subtitulo}
               </p>
             )}
-            {siteConfig.hero_cta_texto && (
-              <a
-                href="#sobre"
-                className="inline-block px-8 py-3 bg-white rounded-full font-semibold transition hover:bg-white/90"
-                style={{ color: colors.primary }}
-              >
-                {siteConfig.hero_cta_texto}
-              </a>
-            )}
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+              {siteConfig.hero_cta_texto && (
+                <a
+                  href="#sobre"
+                  className="inline-block px-8 py-3 bg-white rounded-full font-semibold transition hover:bg-white/90"
+                  style={{ color: colors.primary }}
+                >
+                  {siteConfig.hero_cta_texto}
+                </a>
+              )}
+              {cadastroMembros && (
+                <a
+                  href="/cadastro"
+                  className="inline-block px-8 py-3 rounded-full font-semibold border-2 border-white text-white transition hover:bg-white/10"
+                >
+                  Cadastro de membros
+                </a>
+              )}
+            </div>
           </div>
         </section>
 
@@ -151,6 +162,25 @@ export default function SiteRenderer({ siteConfig, posts, orgNome, previewMode }
                   </div>
                 ))}
               </div>
+            </div>
+          </section>
+        )}
+
+        {/* Cadastro de membros (módulo Igreja) */}
+        {cadastroMembros && (
+          <section id="membros" className="py-20 px-6 bg-gray-50">
+            <div className="max-w-2xl mx-auto text-center">
+              <h2 className="text-3xl font-bold text-gray-900 mb-4">Faça parte da nossa igreja</h2>
+              <p className="text-gray-600 mb-8">
+                Já é membro ou quer se tornar membro? Faça seu cadastro em poucos minutos, pelo celular.
+              </p>
+              <a
+                href="/cadastro"
+                className="inline-block px-8 py-3 rounded-full font-semibold text-white transition hover:opacity-90"
+                style={{ backgroundColor: colors.primary }}
+              >
+                Fazer meu cadastro
+              </a>
             </div>
           </section>
         )}

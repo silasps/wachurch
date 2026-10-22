@@ -5,17 +5,18 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard, Users, GraduationCap, BookOpen,
-  Heart, Globe, Settings, LogOut, ChevronRight, MoreHorizontal, DollarSign,
+  Heart, Globe, Settings, LogOut, ChevronRight, MoreHorizontal, DollarSign, Church,
 } from 'lucide-react'
 import { cn, getInitials } from '@/lib/utils'
 import {
   canVerDashboard, canVerAlunos, canVerTurmas,
   canGerenciarUsuarios, canGerenciarVoluntariado,
   canGerenciarSite, canGerenciarConfiguracoes,
-  canVerFinanceiro,
+  canVerFinanceiro, canVerMembros,
   ROLE_LABELS,
 } from '@/lib/rbac'
-import type { UserRole } from '@/types'
+import { MODULO_LABELS } from '@/lib/modulos'
+import type { Modulo, UserRole } from '@/types'
 
 interface AdminSidebarProps {
   orgName: string
@@ -24,23 +25,39 @@ interface AdminSidebarProps {
   userNome: string
   userRole: UserRole
   effectiveRole: UserRole
+  modulos: Modulo[]
 }
 
-const NAV_ITEMS = [
+// modulo: item só aparece se a licença da org tiver o módulo (sem modulo = comum a todas)
+const NAV_ITEMS: Array<{
+  label: string
+  href: string
+  icon: typeof LayoutDashboard
+  can: (role: UserRole) => boolean
+  modulo?: Modulo
+}> = [
   { label: 'Dashboard',    href: '/admin',               icon: LayoutDashboard, can: canVerDashboard },
+  { label: 'Membros',      href: '/admin/membros',       icon: Church,          can: canVerMembros, modulo: 'igreja' },
   { label: 'Usuários',     href: '/admin/usuarios',      icon: Users,           can: canGerenciarUsuarios },
-  { label: 'Alunos',       href: '/admin/alunos',        icon: GraduationCap,   can: canVerAlunos },
-  { label: 'Turmas',       href: '/admin/turmas',        icon: BookOpen,        can: canVerTurmas },
+  { label: 'Alunos',       href: '/admin/alunos',        icon: GraduationCap,   can: canVerAlunos, modulo: 'social' },
+  { label: 'Turmas',       href: '/admin/turmas',        icon: BookOpen,        can: canVerTurmas, modulo: 'social' },
   { label: 'Financeiro',   href: '/admin/financeiro',    icon: DollarSign,      can: canVerFinanceiro },
-  { label: 'Voluntariado', href: '/admin/voluntariado',  icon: Heart,           can: canGerenciarVoluntariado },
+  { label: 'Voluntariado', href: '/admin/voluntariado',  icon: Heart,           can: canGerenciarVoluntariado, modulo: 'social' },
   { label: 'Site',         href: '/admin/site',          icon: Globe,           can: canGerenciarSite },
   { label: 'Config',       href: '/admin/configuracoes', icon: Settings,        can: canGerenciarConfiguracoes },
+]
+
+// Ordem dos grupos no menu desktop quando a org tem mais de um módulo
+const GRUPOS: Array<{ key: Modulo | 'geral'; label: string | null }> = [
+  { key: 'igreja', label: MODULO_LABELS.igreja },
+  { key: 'social', label: MODULO_LABELS.social },
+  { key: 'geral',  label: 'Geral' },
 ]
 
 const MAX_PRIMARY = 4
 
 export default function AdminSidebar({
-  orgName, logoUrl, primaryColor, userNome, userRole, effectiveRole,
+  orgName, logoUrl, primaryColor, userNome, userRole, effectiveRole, modulos,
 }: AdminSidebarProps) {
   const pathname = usePathname()
   const [maisOpen, setMaisOpen] = useState(false)
@@ -48,7 +65,24 @@ export default function AdminSidebar({
   const isActive = (href: string) =>
     href === '/admin' ? pathname === '/admin' : pathname.startsWith(href)
 
-  const visibleItems = NAV_ITEMS.filter(({ can }) => can(effectiveRole))
+  const visibleItems = NAV_ITEMS.filter(({ can, modulo }) =>
+    can(effectiveRole) && (!modulo || modulos.includes(modulo))
+  )
+
+  // Desktop: com os dois módulos, agrupa (Dashboard no topo, depois Igreja / Projeto Social / Geral)
+  const agrupar = modulos.length > 1
+  const desktopSections = agrupar
+    ? [
+        { key: 'topo', label: null as string | null, items: visibleItems.filter(i => i.href === '/admin') },
+        ...GRUPOS.map(g => ({
+          key: g.key,
+          label: g.label,
+          items: visibleItems.filter(i =>
+            i.href !== '/admin' && (g.key === 'geral' ? !i.modulo : i.modulo === g.key)
+          ),
+        })),
+      ].filter(sec => sec.items.length > 0)
+    : [{ key: 'todos', label: null as string | null, items: visibleItems }]
 
   const showMais = visibleItems.length > MAX_PRIMARY
   const primaryItems = showMais ? visibleItems.slice(0, MAX_PRIMARY) : visibleItems
@@ -72,25 +106,34 @@ export default function AdminSidebar({
           <span className="text-sm font-semibold text-gray-900 truncate">{orgName}</span>
         </div>
 
-        <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-auto">
-          {visibleItems.map(({ label, href, icon: Icon }) => {
-            const active = isActive(href)
-            return (
-              <Link
-                key={href}
-                href={href}
-                className={cn(
-                  'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition group',
-                  active ? 'text-white font-medium' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-                )}
-                style={active ? { backgroundColor: primaryColor } : {}}
-              >
-                <Icon size={16} className={active ? 'text-white' : 'text-gray-400 group-hover:text-gray-600'} />
-                {label === 'Site' ? 'Site Público' : label === 'Config' ? 'Configurações' : label}
-                {active && <ChevronRight size={14} className="ml-auto text-white/70" />}
-              </Link>
-            )
-          })}
+        <nav className="flex-1 px-3 py-4 overflow-auto">
+          {desktopSections.map((section, idx) => (
+            <div key={section.key} className={cn('space-y-0.5', idx > 0 && section.label && 'mt-4')}>
+              {section.label && (
+                <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+                  {section.label}
+                </p>
+              )}
+              {section.items.map(({ label, href, icon: Icon }) => {
+                const active = isActive(href)
+                return (
+                  <Link
+                    key={href}
+                    href={href}
+                    className={cn(
+                      'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition group',
+                      active ? 'text-white font-medium' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                    )}
+                    style={active ? { backgroundColor: primaryColor } : {}}
+                  >
+                    <Icon size={16} className={active ? 'text-white' : 'text-gray-400 group-hover:text-gray-600'} />
+                    {label === 'Site' ? 'Site Público' : label === 'Config' ? 'Configurações' : label}
+                    {active && <ChevronRight size={14} className="ml-auto text-white/70" />}
+                  </Link>
+                )
+              })}
+            </div>
+          ))}
         </nav>
 
         <div className="px-3 pb-4 border-t border-gray-100 pt-3">

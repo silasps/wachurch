@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* Tema escuro por página (ex.: perfil da igreja com site_config.tema = 'escuro') */
+@custom-variant escuro (&:where(.tema-escuro, .tema-escuro *));
+
 :root {
   --color-primary: #1e40af;
   --color-primary-light: #93c5fd;

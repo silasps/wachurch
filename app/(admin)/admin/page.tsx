@@ -1,7 +1,9 @@
 import Link from 'next/link'
 import { requireRole } from '@/lib/auth'
-import { createClient } from '@/lib/supabase-server'
-import { canVerFinanceiro } from '@/lib/rbac'
+import { createClient, createServiceClient } from '@/lib/supabase-server'
+import { canVerFinanceiro, canVerMembros } from '@/lib/rbac'
+import { getCurrentOrg } from '@/lib/org'
+import { nomeDoTipo, orgTemModulo } from '@/lib/modulos'
 
 function formatBRL(centavos: number) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(centavos / 100)
@@ -12,6 +14,9 @@ export default async function AdminDashboardPage() {
   const supabase = await createClient()
   const orgId = profile.org_id
   const verFinanceiro = canVerFinanceiro(profile.role)
+  const org = await getCurrentOrg(profile)
+  const temSocial = orgTemModulo(org, 'social')
+  const temIgreja = orgTemModulo(org, 'igreja') && canVerMembros(profile.role)
 
   const now = new Date()
   const mesInicio = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`
@@ -39,6 +44,20 @@ export default async function AdminDashboardPage() {
       : Promise.resolve({ data: [] }),
   ])
 
+  // Módulo igreja: org efetiva (pode ser a impersonada) — service client com filtro explícito
+  let membrosAtivos = 0
+  let membrosConferir = 0
+  let candidatos = 0
+  if (temIgreja && org) {
+    const service = await createServiceClient()
+    const contar = (situacao: string) =>
+      service.from('membros').select('*', { count: 'exact', head: true }).eq('org_id', org.id).eq('situacao', situacao)
+    const [a, p, c] = await Promise.all([contar('ativo'), contar('pendente'), contar('candidato')])
+    membrosAtivos = a.count ?? 0
+    membrosConferir = p.count ?? 0
+    candidatos = c.count ?? 0
+  }
+
   const saldoTotal = (todosPagos ?? []).reduce((acc: number, l: { tipo: string; valor: number }) => acc + (l.tipo === 'receita' ? l.valor : -l.valor), 0)
   const receitasMes = (lancamentosDoMes ?? []).filter((l: { tipo: string }) => l.tipo === 'receita').reduce((acc: number, l: { valor: number }) => acc + l.valor, 0)
   const despesasMes = (lancamentosDoMes ?? []).filter((l: { tipo: string }) => l.tipo === 'despesa').reduce((acc: number, l: { valor: number }) => acc + l.valor, 0)
@@ -47,15 +66,25 @@ export default async function AdminDashboardPage() {
     <div className="p-4 sm:p-6 lg:p-8">
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-        <p className="text-gray-500 text-sm mt-1">Visão geral da organização</p>
+        <p className="text-gray-500 text-sm mt-1">Visão geral da {nomeDoTipo(org?.tipo)}</p>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <StatCard label="Alunos ativos" value={alunosAtivos ?? 0} color="blue" href="/admin/alunos" />
-        <StatCard label="Turmas ativas" value={turmasAtivas ?? 0} color="green" href="/admin/turmas" />
-        <StatCard label="Voluntários" value={voluntariosAtivos ?? 0} color="purple" href="/admin/voluntariado" />
-        <StatCard label="Inscrições pendentes" value={solicitacoesPendentes ?? 0} color="orange" href="/admin/alunos/solicitacoes" />
-      </div>
+      {temIgreja && (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          <StatCard label="Membros ativos" value={membrosAtivos} color="green" href="/admin/membros?aba=ativos" />
+          <StatCard label="Cadastros para conferir" value={membrosConferir} color="orange" href="/admin/membros?aba=conferir" />
+          <StatCard label="Candidatos a membro" value={candidatos} color="blue" href="/admin/membros?aba=candidatos" />
+        </div>
+      )}
+
+      {temSocial && (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          <StatCard label="Alunos ativos" value={alunosAtivos ?? 0} color="blue" href="/admin/alunos" />
+          <StatCard label="Turmas ativas" value={turmasAtivas ?? 0} color="green" href="/admin/turmas" />
+          <StatCard label="Voluntários" value={voluntariosAtivos ?? 0} color="purple" href="/admin/voluntariado" />
+          <StatCard label="Inscrições pendentes" value={solicitacoesPendentes ?? 0} color="orange" href="/admin/alunos/solicitacoes" />
+        </div>
+      )}
 
       {/* Card financeiro */}
       {verFinanceiro && (
@@ -74,7 +103,7 @@ export default async function AdminDashboardPage() {
         </div>
       )}
 
-      {(solicitacoesPendentes ?? 0) > 0 && (
+      {temSocial && (solicitacoesPendentes ?? 0) > 0 && (
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-center gap-3">
           <div className="w-8 h-8 bg-amber-100 rounded-lg flex items-center justify-center text-amber-600 text-sm font-bold">
             {solicitacoesPendentes}

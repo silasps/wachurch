@@ -7,6 +7,10 @@ export function cn(...inputs: ClassValue[]) {
 
 export function formatDate(date: string | null | undefined): string {
   if (!date) return '—'
+  // 'AAAA-MM-DD' puro é interpretado como UTC pelo Date e, no fuso do Brasil,
+  // apareceria um dia antes — formata direto da string nesse caso
+  const soData = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date)
+  if (soData) return `${soData[3]}/${soData[2]}/${soData[1]}`
   return new Intl.DateTimeFormat('pt-BR').format(new Date(date))
 }
 

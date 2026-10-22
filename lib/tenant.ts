@@ -88,3 +88,12 @@ export async function getSiteConfig(
 
   return data as SiteConfig | null
 }
+
+// URL pública (subdomínio) de uma org — usada quando a página é vista fora do host do tenant (ex.: /s/[slug])
+export function urlPublicaOrg(slug: string, host: string): string {
+  if (host.includes('localhost')) {
+    const porta = host.includes(':') ? `:${host.split(':')[1]}` : ''
+    return `http://${slug}.localhost${porta}`
+  }
+  return `https://${slug}.ostricksocial.com.br`
+}

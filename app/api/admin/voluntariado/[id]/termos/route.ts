@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase-server'
+import { temModulo } from '@/lib/org'
 import { getSession, isAdmin } from '@/lib/auth'
 
 interface Params { params: Promise<{ id: string }> }
@@ -9,6 +10,9 @@ export async function GET(req: Request, { params }: Params) {
   const session = await getSession()
   if (!session || (!isAdmin(session.profile.role) && session.profile.role !== 'funcionario')) {
     return NextResponse.json({ error: 'Não autorizado' }, { status: 403 })
+  }
+  if (!(await temModulo(session.profile, 'social'))) {
+    return NextResponse.json({ error: 'Módulo Projeto Social não está disponível nesta licença' }, { status: 403 })
   }
 
   const supabase = await createClient()
@@ -28,6 +32,9 @@ export async function POST(req: Request, { params }: Params) {
   const session = await getSession()
   if (!session || (!isAdmin(session.profile.role) && session.profile.role !== 'funcionario')) {
     return NextResponse.json({ error: 'Não autorizado' }, { status: 403 })
+  }
+  if (!(await temModulo(session.profile, 'social'))) {
+    return NextResponse.json({ error: 'Módulo Projeto Social não está disponível nesta licença' }, { status: 403 })
   }
 
   const body = await req.json()

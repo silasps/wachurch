@@ -3,6 +3,8 @@ import { createClient } from '@/lib/supabase-server'
 import { getSiteConfig } from '@/lib/tenant'
 import Link from 'next/link'
 import SiteRenderer from '@/components/public-site/site-renderer'
+import IgrejaPerfil from '@/components/public-site/igreja-perfil'
+import { orgTemModulo } from '@/lib/modulos'
 import type { SiteConfig, SitePost } from '@/types'
 
 export default async function SitePreviewPage() {
@@ -23,7 +25,7 @@ export default async function SitePreviewPage() {
   // Buscar nome da org
   const { data: org } = await supabase
     .from('organizations')
-    .select('nome')
+    .select('nome, modulos, tipo')
     .eq('id', profile.org_id)
     .single()
 
@@ -47,11 +49,24 @@ export default async function SitePreviewPage() {
 
   const posts = (postsResult.data ?? []) as SitePost[]
 
+  if (org?.tipo === 'igreja') {
+    return (
+      <IgrejaPerfil
+        siteConfig={siteConfig as SiteConfig}
+        posts={posts}
+        orgNome={org.nome ?? ''}
+        temProjetoSocial={orgTemModulo(org, 'social')}
+        previewMode
+      />
+    )
+  }
+
   return (
     <SiteRenderer
       siteConfig={siteConfig as SiteConfig}
       posts={posts}
       orgNome={org?.nome ?? ''}
+      cadastroMembros={orgTemModulo(org, 'igreja')}
       previewMode
     />
   )

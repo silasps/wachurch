@@ -4,26 +4,13 @@ import { useState } from 'react'
 import { Loader2, Check, MapPin } from 'lucide-react'
 import type { SiteConfig } from '@/types'
 import { SiteImageUploader } from '../_components/site-image-uploader'
+import { maskPhone, maskCep, isValidEmail } from '@/lib/mascaras'
+import { buscarCep } from '@/lib/cep'
 
-interface Props { config: SiteConfig | null }
-
-function maskPhone(value: string): string {
-  const d = value.replace(/\D/g, '').slice(0, 11)
-  if (d.length === 0) return ''
-  if (d.length <= 2) return `(${d}`
-  if (d.length <= 6) return `(${d.slice(0, 2)}) ${d.slice(2)}`
-  if (d.length <= 10) return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`
-  return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`
-}
-
-function maskCep(value: string): string {
-  const d = value.replace(/\D/g, '').slice(0, 8)
-  if (d.length <= 5) return d
-  return `${d.slice(0, 5)}-${d.slice(5)}`
-}
-
-function isValidEmail(email: string): boolean {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+interface Props {
+  config: SiteConfig | null
+  /** Conta de igreja: história e missão ficam em Site → Perfil da igreja */
+  ehIgreja?: boolean
 }
 
 function initWppDisplay(raw: string): string {
@@ -33,7 +20,7 @@ function initWppDisplay(raw: string): string {
   return maskPhone(digits)
 }
 
-export default function ConteudoForm({ config }: Props) {
+export default function ConteudoForm({ config, ehIgreja = false }: Props) {
   const [loading, setLoading] = useState(false)
   const [saved, setSaved] = useState(false)
   const [form, setForm] = useState({
@@ -82,14 +69,13 @@ export default function ConteudoForm({ config }: Props) {
     setCepLoading(true)
     setCepNotFound(false)
     try {
-      const res = await fetch(`https://viacep.com.br/ws/${digits}/json/`)
-      const data = await res.json()
-      if (data.erro) { setCepNotFound(true); return }
+      const data = await buscarCep(digits)
+      if (!data) { setCepNotFound(true); return }
       setAddr(a => ({
         ...a,
         rua: data.logradouro || a.rua,
         bairro: data.bairro || '',
-        cidade: data.localidade || '',
+        cidade: data.cidade || '',
         estado: data.uf || '',
       }))
     } finally {
@@ -133,10 +119,13 @@ export default function ConteudoForm({ config }: Props) {
           hero_subtitulo: form.hero_subtitulo,
           hero_cta_texto: form.hero_cta_texto,
           hero_imagem_url: form.hero_imagem_url || null,
-          sobre_titulo: form.sobre_titulo,
-          sobre_texto: form.sobre_texto,
-          sobre_imagem_url: form.sobre_imagem_url || null,
-          missao: form.missao,
+          // Igreja edita história/missão no Perfil da igreja — não sobrescreve daqui
+          ...(ehIgreja ? {} : {
+            sobre_titulo: form.sobre_titulo,
+            sobre_texto: form.sobre_texto,
+            sobre_imagem_url: form.sobre_imagem_url || null,
+            missao: form.missao,
+          }),
           contato: {
             email: form.contato_email,
             telefone: form.contato_telefone,
@@ -193,35 +182,45 @@ export default function ConteudoForm({ config }: Props) {
         </div>
       </section>
 
-      {/* Sobre nós */}
-      <section className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
-        <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Seção Sobre Nós</h2>
-        <div>
-          <label className={labelClass}>Título da seção</label>
-          <input value={form.sobre_titulo} onChange={e => set('sobre_titulo', e.target.value)} placeholder="Quem Somos" className={inputClass} />
-        </div>
-        <div>
-          <label className={labelClass}>Texto</label>
-          <textarea value={form.sobre_texto} onChange={e => set('sobre_texto', e.target.value)} rows={5} placeholder="Conte a história e o propósito da organização..." className="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
-        </div>
-        <div>
-          <label className={labelClass}>Imagem</label>
-          <SiteImageUploader
-            currentUrl={form.sobre_imagem_url}
-            slot="sobre-img"
-            aspect={1}
-            modalTitle="Ajustar imagem da seção Sobre"
-            hint="PNG, JPG ou WebP · máx. 8MB"
-            description="Aparece quadrada ao lado do texto da seção Sobre. Tamanho ideal: 800×800 px."
-            exampleImage="/site-examples/sobre.svg"
-            onSaved={url => set('sobre_imagem_url', url)}
-          />
-        </div>
-        <div>
-          <label className={labelClass}>Missão</label>
-          <textarea value={form.missao} onChange={e => set('missao', e.target.value)} rows={2} placeholder="Nossa missão é..." className="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
-        </div>
-      </section>
+      {/* Sobre nós — igrejas usam a História e a Missão do Perfil da igreja */}
+      {ehIgreja ? (
+        <section className="bg-blue-50 border border-blue-100 rounded-xl p-5 text-sm text-blue-900">
+          <p className="font-semibold mb-1">Quem somos, história e missão</p>
+          <p>
+            Na página da igreja, essas informações ficam em{' '}
+            <a href="/admin/site/igreja" className="underline font-medium">Site → Perfil da igreja</a>, para não repetir o mesmo texto em dois lugares.
+          </p>
+        </section>
+      ) : (
+        <section className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
+          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Seção Sobre Nós</h2>
+          <div>
+            <label className={labelClass}>Título da seção</label>
+            <input value={form.sobre_titulo} onChange={e => set('sobre_titulo', e.target.value)} placeholder="Quem Somos" className={inputClass} />
+          </div>
+          <div>
+            <label className={labelClass}>Texto</label>
+            <textarea value={form.sobre_texto} onChange={e => set('sobre_texto', e.target.value)} rows={5} placeholder="Conte a história e o propósito da organização..." className="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
+          </div>
+          <div>
+            <label className={labelClass}>Imagem</label>
+            <SiteImageUploader
+              currentUrl={form.sobre_imagem_url}
+              slot="sobre-img"
+              aspect={1}
+              modalTitle="Ajustar imagem da seção Sobre"
+              hint="PNG, JPG ou WebP · máx. 8MB"
+              description="Aparece quadrada ao lado do texto da seção Sobre. Tamanho ideal: 800×800 px."
+              exampleImage="/site-examples/sobre.svg"
+              onSaved={url => set('sobre_imagem_url', url)}
+            />
+          </div>
+          <div>
+            <label className={labelClass}>Missão</label>
+            <textarea value={form.missao} onChange={e => set('missao', e.target.value)} rows={2} placeholder="Nossa missão é..." className="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
+          </div>
+        </section>
+      )}
 
       {/* Contato */}
       <section className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">

@@ -1,6 +1,7 @@
 import { requireRole } from '@/lib/auth'
 import { createClient } from '@/lib/supabase-server'
 import ConteudoForm from './conteudo-form'
+import { getCurrentOrg } from '@/lib/org'
 import type { SiteConfig } from '@/types'
 
 export default async function ConteudoPage() {
@@ -20,7 +21,7 @@ export default async function ConteudoPage() {
         <h1 className="text-2xl font-bold text-gray-900">Conteúdo do site</h1>
         <p className="text-gray-500 text-sm mt-1">Edite os textos que aparecem no site público.</p>
       </div>
-      <ConteudoForm config={config as SiteConfig | null} />
+      <ConteudoForm config={config as SiteConfig | null} ehIgreja={(await getCurrentOrg(profile))?.tipo === 'igreja'} />
     </div>
   )
 }

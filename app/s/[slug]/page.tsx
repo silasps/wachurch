@@ -1,7 +1,10 @@
 import { createServerClient } from '@supabase/ssr'
-import { getSiteConfig } from '@/lib/tenant'
+import { getSiteConfig, urlPublicaOrg } from '@/lib/tenant'
 import { LandingPage } from '@/app/(public)/_components/landing-page'
 import SiteRenderer from '@/components/public-site/site-renderer'
+import IgrejaPerfil from '@/components/public-site/igreja-perfil'
+import { headers } from 'next/headers'
+import { orgTemModulo } from '@/lib/modulos'
 import type { Organization, SitePost } from '@/types'
 import { notFound } from 'next/navigation'
 
@@ -53,6 +56,19 @@ export default async function PublicSiteBySlug({
   }
 
   const posts = await getPublishedPosts(org.id)
+
+  if (org.tipo === 'igreja') {
+    const host = (await headers()).get('host') || ''
+    return (
+      <IgrejaPerfil
+        siteConfig={siteConfig}
+        posts={posts}
+        orgNome={org.nome}
+        temProjetoSocial={orgTemModulo(org, 'social')}
+        baseUrl={urlPublicaOrg(org.slug, host)}
+      />
+    )
+  }
 
   return (
     <SiteRenderer

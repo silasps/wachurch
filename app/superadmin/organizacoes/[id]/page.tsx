@@ -67,7 +67,7 @@ export default async function OrgDetailPage({
 
       {/* Gestão de plano e status */}
       <div className="bg-white/5 border border-white/10 rounded-xl p-6 mb-6">
-        <h2 className="font-semibold mb-4">Plano e acesso</h2>
+        <h2 className="font-semibold mb-4">Licença, plano e acesso</h2>
         <OrgAcoesForm org={org as Organization} />
       </div>
 

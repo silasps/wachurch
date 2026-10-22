@@ -1,9 +1,9 @@
 import { headers } from 'next/headers'
 import { resolveOrgFromHost, getSiteConfig } from '@/lib/tenant'
 import { notFound } from 'next/navigation'
-import { COLOR_PALETTE } from '@/types'
 import Link from 'next/link'
 import FacaParteForm from './faca-parte-form'
+import { coresDoSite } from '@/lib/cores'
 
 export default async function FacaPartePage() {
   const headersList = await headers()
@@ -13,8 +13,7 @@ export default async function FacaPartePage() {
   if (!tenantResult) notFound()
 
   const siteConfig = await getSiteConfig(tenantResult.org.id)
-  const colors = COLOR_PALETTE[siteConfig?.cor_primaria as keyof typeof COLOR_PALETTE]
-    || COLOR_PALETTE['azul-oceano']
+  const colors = coresDoSite(siteConfig)
 
   return (
     <div className="min-h-screen bg-gray-50">

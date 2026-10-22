@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { requireRole } from '@/lib/auth'
+import { CONTENT_TYPE_WEBP, ehImagemRaster, paraWebp } from '@/lib/imagem-server'
 import { createServiceClient } from '@/lib/supabase-server'
 
 const BUCKET = 'site-assets'
@@ -28,12 +29,22 @@ export async function POST(req: Request) {
   const supabase = await createServiceClient()
   await ensureBucket(supabase)
 
-  const ext = file.type === 'image/webp' ? 'webp' : file.type === 'image/png' ? 'png' : file.type === 'image/svg+xml' ? 'svg' : 'jpg'
-  const path = `${profile.org_id}/${slot}-${Date.now()}.${ext}`
+  // Toda imagem vira WebP (SVG é vetorial e segue como está)
+  const svg = file.type === 'image/svg+xml'
+  if (!svg && !ehImagemRaster(file.type)) {
+    return NextResponse.json({ error: 'Envie uma imagem (JPG, PNG ou WebP)' }, { status: 400 })
+  }
+  let conteudo: Buffer
+  try {
+    conteudo = svg ? Buffer.from(await file.arrayBuffer()) : await paraWebp(file, { maxLado: 2400, qualidade: 82 })
+  } catch {
+    return NextResponse.json({ error: 'Não foi possível processar esta imagem' }, { status: 400 })
+  }
+  const path = `${profile.org_id}/${slot}-${Date.now()}.${svg ? 'svg' : 'webp'}`
 
   const { error } = await supabase.storage
     .from(BUCKET)
-    .upload(path, file, { contentType: file.type, upsert: true })
+    .upload(path, conteudo, { contentType: svg ? file.type : CONTENT_TYPE_WEBP, upsert: true })
 
   if (error) {
     console.error('[imagem upload]', error)

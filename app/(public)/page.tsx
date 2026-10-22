@@ -3,6 +3,8 @@ import { createServerClient } from '@supabase/ssr'
 import { resolveOrgFromHost, getSiteConfig } from '@/lib/tenant'
 import { LandingPage } from './_components/landing-page'
 import SiteRenderer from '@/components/public-site/site-renderer'
+import IgrejaPerfil from '@/components/public-site/igreja-perfil'
+import { orgTemModulo } from '@/lib/modulos'
 import type { SitePost } from '@/types'
 
 async function getPublishedPosts(orgId: string): Promise<SitePost[]> {
@@ -35,11 +37,23 @@ export default async function PublicHomePage() {
 
   const posts = await getPublishedPosts(tenantResult.org.id)
 
+  if (tenantResult.org.tipo === 'igreja') {
+    return (
+      <IgrejaPerfil
+        siteConfig={siteConfig}
+        posts={posts}
+        orgNome={tenantResult.org.nome}
+        temProjetoSocial={orgTemModulo(tenantResult.org, 'social')}
+      />
+    )
+  }
+
   return (
     <SiteRenderer
       siteConfig={siteConfig}
       posts={posts}
       orgNome={tenantResult.org.nome}
+      cadastroMembros={orgTemModulo(tenantResult.org, 'igreja')}
     />
   )
 }

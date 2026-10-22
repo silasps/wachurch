@@ -1,11 +1,18 @@
 import { requireRole } from '@/lib/auth'
 import { headers } from 'next/headers'
+import { redirect } from 'next/navigation'
+import { getCurrentOrg } from '@/lib/org'
+import { orgTemModulo } from '@/lib/modulos'
 import { resolveOrgFromHost, getSiteConfig } from '@/lib/tenant'
-import { COLOR_PALETTE } from '@/types'
 import ProfessorSidebar from './professor-sidebar'
+import { coresDoSite } from '@/lib/cores'
 
 export default async function ProfessorLayout({ children }: { children: React.ReactNode }) {
   const { profile } = await requireRole(['professor', 'admin', 'superadmin'])
+
+  // Painel do professor pertence ao módulo Projeto Social
+  const currentOrg = await getCurrentOrg(profile)
+  if (currentOrg && !orgTemModulo(currentOrg, 'social')) redirect('/acesso-negado')
 
   const headersList = await headers()
   const host = headersList.get('host') || 'localhost'
@@ -15,8 +22,7 @@ export default async function ProfessorLayout({ children }: { children: React.Re
 
   const orgName = siteConfig?.hero_titulo || tenantResult?.org.nome || 'Ostrick Social'
   const logoUrl = siteConfig?.logo_url || null
-  const corPrimaria = siteConfig?.cor_primaria || 'azul-oceano'
-  const colors = COLOR_PALETTE[corPrimaria as keyof typeof COLOR_PALETTE] || COLOR_PALETTE['azul-oceano']
+  const colors = coresDoSite(siteConfig)
 
   return (
     <div className="min-h-screen flex bg-gray-50">

@@ -1,6 +1,7 @@
 import { requireRole } from '@/lib/auth'
 import { createClient } from '@/lib/supabase-server'
 import AparenciaForm from './aparencia-form'
+import { getCurrentOrg } from '@/lib/org'
 import type { SiteConfig } from '@/types'
 
 export default async function AparenciaPage() {
@@ -21,7 +22,7 @@ export default async function AparenciaPage() {
         <h1 className="text-2xl font-bold text-gray-900">Aparência</h1>
         <p className="text-gray-500 text-sm mt-1">Escolha o template, as cores e o logo do seu site.</p>
       </div>
-      <AparenciaForm config={config as SiteConfig | null} subdomain={subdomain} />
+      <AparenciaForm config={config as SiteConfig | null} subdomain={subdomain} ehIgreja={(await getCurrentOrg(profile))?.tipo === 'igreja'} />
     </div>
   )
 }

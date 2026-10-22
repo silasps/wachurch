@@ -36,6 +36,11 @@ export const canGerenciarConfiguracoes = (role: UserRole) => getRoleLevel(role) 
 export const canVerFinanceiro       = (role: UserRole) => getRoleLevel(role) >= ROLE_LEVEL.funcionario
 export const canGerenciarFinanceiro = (role: UserRole) => getRoleLevel(role) >= ROLE_LEVEL.admin
 
+// Permissões do módulo igreja (membros) — a secretaria usa o role funcionario
+export const canVerMembros          = (role: UserRole) => getRoleLevel(role) >= ROLE_LEVEL.funcionario
+export const canGerenciarMembros    = (role: UserRole) => getRoleLevel(role) >= ROLE_LEVEL.funcionario
+export const canConfigurarMembresia = (role: UserRole) => getRoleLevel(role) >= ROLE_LEVEL.admin
+
 // Roles que o superadmin pode simular no painel /admin
 export const PREVIEW_ROLES: Array<{ value: UserRole; label: string; desc: string }> = [
   { value: 'admin',      label: 'Administrador', desc: 'Acesso total à organização' },

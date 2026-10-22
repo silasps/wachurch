@@ -1,15 +1,25 @@
 import Link from 'next/link'
 import {
   Users, BookOpen, Heart, Globe, Shield, FileSignature,
-  Landmark, Check, X, ArrowRight, Zap, ChevronRight,
+  Landmark, Check, X, ArrowRight, Zap, ChevronRight, Church,
 } from 'lucide-react'
 
 const BRAND = '#1e40af'
 
-const FEATURES = [
+const FEATURES: Array<{ icon: typeof Users; title: string; desc: string; badge?: string }> = [
+  {
+    icon: Church,
+    title: 'Cadastro de Membros',
+    desc: 'Formulário simples pelo celular — para quem já é membro ou quer ser, por aclamação, transferência ou batismo. Com LGPD.',
+  },
+  {
+    icon: Globe,
+    title: 'Página da Igreja',
+    desc: 'Perfil público com capa, história, horários de culto, endereço e liderança — no seu subdomínio ou domínio próprio.',
+  },
   {
     icon: Users,
-    title: 'Gestão de Alunos',
+    title: 'Projeto Social: Alunos',
     desc: 'Fichas completas, matrículas, histórico e acompanhamento individual de cada beneficiário.',
   },
   {
@@ -21,11 +31,6 @@ const FEATURES = [
     icon: Heart,
     title: 'Voluntariado',
     desc: 'Gerencie candidaturas, aprovações e acompanhe a equipe de voluntários em um só lugar.',
-  },
-  {
-    icon: Globe,
-    title: 'Site Público',
-    desc: 'Cada organização recebe uma página personalizada com suas cores, logo e informações de contato.',
   },
   {
     icon: Shield,
@@ -41,20 +46,20 @@ const FEATURES = [
     icon: Landmark,
     title: 'Gestão Financeira',
     desc: 'Fluxo de caixa, controle de receitas e despesas, e relatórios financeiros completos.',
-    badge: 'Em breve',
   },
 ]
 
 const STEPS = [
-  { num: '1', title: 'Cadastre sua organização', desc: 'Crie sua conta em minutos e configure o perfil da sua ONG ou projeto social.' },
-  { num: '2', title: 'Configure alunos e turmas', desc: 'Importe ou cadastre beneficiários, crie turmas e convide sua equipe.' },
+  { num: '1', title: 'Cadastre sua igreja', desc: 'Crie a conta e monte a página pública da igreja em minutos.' },
+  { num: '2', title: 'Compartilhe o cadastro', desc: 'Envie o link ou o QR code do cadastro de membros — no boletim, no telão ou no WhatsApp.' },
   { num: '3', title: 'Comece a usar', desc: 'Sua equipe já acessa com as permissões certas. Sem treinamento complexo.' },
 ]
 
 type PlanFeature = { label: string; basic: boolean | string; pro: boolean | string }
 
 const PLAN_FEATURES: PlanFeature[] = [
-  { label: 'Alunos',                      basic: 'até 300',      pro: 'Ilimitado' },
+  { label: 'Cadastro de membros',         basic: true,           pro: true },
+  { label: 'Alunos (projeto social)',                      basic: 'até 300',      pro: 'Ilimitado' },
   { label: 'Usuários',                    basic: '10 usuários',  pro: 'Ilimitado' },
   { label: 'Site público',                basic: true,           pro: 'com domínio próprio' },
   { label: 'Turmas e chamadas',           basic: true,           pro: true },
@@ -113,15 +118,15 @@ export function LandingPage() {
             className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-full mb-6"
             style={{ backgroundColor: `${BRAND}12`, color: BRAND }}
           >
-            <Zap size={12} /> Plataforma completa para projetos sociais
+            <Zap size={12} /> Gestão para igrejas e seus projetos sociais
           </span>
           <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight text-gray-900 leading-tight mb-6">
-            Gerencie seu projeto social<br className="hidden sm:block" />
+            Gerencie sua igreja<br className="hidden sm:block" />
             <span style={{ color: BRAND }}> com simplicidade</span>
           </h1>
           <p className="text-lg sm:text-xl text-gray-500 max-w-2xl mx-auto mb-10 leading-relaxed">
-            Alunos, turmas, voluntários, termos digitais e site público — tudo em um só lugar,
-            feito para ONGs e projetos sociais brasileiros.
+            Cadastro de membros, página da igreja e, se houver, o projeto social com alunos,
+            turmas e voluntários — tudo em um só lugar, feito para igrejas brasileiras.
           </p>
           <div className="flex flex-wrap justify-center gap-3">
             <a
@@ -210,7 +215,7 @@ export function LandingPage() {
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-14">
             <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-3">
-              Tudo que seu projeto precisa
+              Tudo que sua igreja precisa
             </h2>
             <p className="text-gray-500 max-w-xl mx-auto">
               Módulos integrados para que sua equipe foque no que importa: as pessoas.
@@ -269,7 +274,21 @@ export function LandingPage() {
         <div className="max-w-4xl mx-auto">
           <div className="text-center mb-6">
             <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-3">Planos e preços</h2>
-            <p className="text-gray-500">Escolha o plano ideal para o seu projeto.</p>
+            <p className="text-gray-500">Escolha a licença e o plano ideais para a sua igreja.</p>
+          </div>
+
+          {/* Licenças: o que cada uma libera */}
+          <div className="grid sm:grid-cols-3 gap-3 mb-6">
+            {[
+              { t: 'Igreja', d: 'Cadastro de membros e página da igreja.' },
+              { t: 'Igreja + Projeto Social', d: 'Tudo da igreja, mais alunos, turmas e voluntariado do projeto social.' },
+              { t: 'Projeto Social', d: 'Para ONGs e projetos sem igreja: alunos, turmas e voluntariado.' },
+            ].map(l => (
+              <div key={l.t} className="bg-white rounded-xl border border-gray-200 p-4">
+                <p className="font-semibold text-gray-900 text-sm">{l.t}</p>
+                <p className="text-xs text-gray-500 mt-1">{l.d}</p>
+              </div>
+            ))}
           </div>
 
           {/* Banner trial */}
@@ -364,7 +383,7 @@ export function LandingPage() {
       >
         <div className="max-w-2xl mx-auto">
           <h2 className="text-3xl sm:text-4xl font-bold mb-4">
-            Pronto para transformar a gestão do seu projeto social?
+            Pronto para organizar a sua igreja?
           </h2>
           <p className="text-blue-200 mb-8 text-lg">
             15 dias grátis, sem cartão. Comece hoje e veja a diferença.

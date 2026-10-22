@@ -1,14 +1,16 @@
 import { requireRole } from '@/lib/auth'
 import { headers, cookies } from 'next/headers'
 import { resolveOrgFromHost, getSiteConfig } from '@/lib/tenant'
-import { COLOR_PALETTE } from '@/types'
 import { createServiceClient } from '@/lib/supabase-server'
 import AdminSidebar from './admin-sidebar'
 import ImpersonationBanner from '@/components/superadmin/impersonation-banner'
 import { RolePreviewBanner } from '@/components/admin/role-preview-banner'
 import { RolePreviewDropdown } from '@/components/admin/role-preview-dropdown'
 import { MelhoriaFab } from '@/components/melhoria-fab'
+import { getCurrentOrg } from '@/lib/org'
+import { modulosDaOrg } from '@/lib/modulos'
 import type { UserRole } from '@/types'
+import { coresDoSite } from '@/lib/cores'
 
 const PREVIEWABLE: UserRole[] = ['admin', 'funcionario']
 
@@ -26,9 +28,13 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       : null
   const effectiveRole: UserRole = previewRole ?? profile.role
 
+  // Módulos da licença da org efetiva (a do perfil ou a impersonada)
+  const currentOrg = await getCurrentOrg(profile)
+  const modulos = modulosDaOrg(currentOrg)
+
   let orgName = 'Ostrick Social'
   let logoUrl: string | null = null
-  let colors = COLOR_PALETTE['azul-oceano']
+  let colors = coresDoSite(null)
   let impOrgNome = ''
 
   if (isImpersonating) {
@@ -38,8 +44,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       const siteConfig = await getSiteConfig(org.id)
       orgName = siteConfig?.hero_titulo || org.nome
       logoUrl = siteConfig?.logo_url || null
-      const cor = siteConfig?.cor_primaria || 'azul-oceano'
-      colors = COLOR_PALETTE[cor as keyof typeof COLOR_PALETTE] || COLOR_PALETTE['azul-oceano']
+      colors = coresDoSite(siteConfig)
       impOrgNome = org.nome
     }
   } else {
@@ -49,8 +54,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     const siteConfig = tenantResult ? await getSiteConfig(tenantResult.org.id) : null
     orgName = siteConfig?.hero_titulo || tenantResult?.org.nome || 'Ostrick Social'
     logoUrl = siteConfig?.logo_url || null
-    const cor = siteConfig?.cor_primaria || 'azul-oceano'
-    colors = COLOR_PALETTE[cor as keyof typeof COLOR_PALETTE] || COLOR_PALETTE['azul-oceano']
+    colors = coresDoSite(siteConfig)
   }
 
   // Banners fixos aparecem quando preview ou impersonação está ativa
@@ -96,6 +100,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           userNome={profile.nome}
           userRole={profile.role}
           effectiveRole={effectiveRole}
+          modulos={modulos}
         />
         <main className={`flex-1 overflow-auto pb-16 lg:pb-0 min-w-0 ${bannerPt}`}>
           {children}

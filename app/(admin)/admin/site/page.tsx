@@ -2,13 +2,16 @@ import { requireRole } from '@/lib/auth'
 import { createClient } from '@/lib/supabase-server'
 import { headers } from 'next/headers'
 import Link from 'next/link'
-import { Palette, Type, Image as ImageIcon, MessageSquare, Link2, Eye } from 'lucide-react'
+import { Palette, Type, Image as ImageIcon, MessageSquare, Link2, Eye, Church } from 'lucide-react'
+import { getCurrentOrg } from '@/lib/org'
+import { orgTemModulo } from '@/lib/modulos'
 import type { SiteConfig } from '@/types'
 import SiteOverviewActions from './_components/site-overview-actions'
 
 export default async function SitePage() {
   const { profile } = await requireRole(['admin', 'superadmin'])
   const supabase = await createClient()
+  const temIgreja = orgTemModulo(await getCurrentOrg(profile), 'igreja')
 
   const [configResult, orgResult, domainsResult] = await Promise.all([
     supabase.from('site_config').select('*').eq('org_id', profile.org_id).single(),
@@ -56,6 +59,15 @@ export default async function SitePage() {
           desc="Template, cores e logo"
           iconBg="bg-purple-50"
         />
+        {temIgreja && (
+          <SiteCard
+            href="/admin/site/igreja"
+            icon={<Church size={22} className="text-amber-600" />}
+            title="Perfil da igreja"
+            desc="Capa, história, cultos, endereço, liderança"
+            iconBg="bg-amber-50"
+          />
+        )}
         <SiteCard
           href="/admin/site/conteudo"
           icon={<Type size={22} className="text-blue-500" />}

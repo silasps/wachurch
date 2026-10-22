@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase-server'
 import { getSession } from '@/lib/auth'
+import { LICENCAS, isLicencaId } from '@/lib/modulos'
+import { isSenhaForte, isValidCnpj, isValidEmail, soDigitos } from '@/lib/mascaras'
 
 export async function POST(request: Request) {
   // Apenas superadmin pode criar orgs
@@ -10,18 +12,31 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json()
-  const { nome, slug, cnpj, plano, adminNome, adminEmail, adminSenha } = body
+  const { nome, slug, cnpj, plano, licenca, adminNome, adminEmail, adminSenha } = body
 
   if (!nome || !slug || !adminNome || !adminEmail || !adminSenha) {
     return NextResponse.json({ error: 'Campos obrigatórios faltando' }, { status: 400 })
   }
+  if (cnpj && !isValidCnpj(cnpj)) {
+    return NextResponse.json({ error: 'CNPJ inválido' }, { status: 400 })
+  }
+  if (!isValidEmail(String(adminEmail).trim())) {
+    return NextResponse.json({ error: 'E-mail do administrador inválido' }, { status: 400 })
+  }
+  if (!isSenhaForte(String(adminSenha))) {
+    return NextResponse.json({ error: 'A senha precisa ter 8+ caracteres, letra maiúscula, minúscula e número' }, { status: 400 })
+  }
+  if (!isLicencaId(licenca)) {
+    return NextResponse.json({ error: 'Licença inválida' }, { status: 400 })
+  }
+  const { tipo, modulos } = LICENCAS[licenca]
 
   const supabase = await createServiceClient()
 
   // 1. Cria a organização
   const { data: org, error: orgError } = await supabase
     .from('organizations')
-    .insert({ nome, slug: slug.toLowerCase(), cnpj: cnpj || null, plano: plano || 'free' })
+    .insert({ nome, slug: slug.toLowerCase(), cnpj: cnpj ? soDigitos(cnpj) : null, plano: plano || 'free', tipo, modulos })
     .select()
     .single()
 

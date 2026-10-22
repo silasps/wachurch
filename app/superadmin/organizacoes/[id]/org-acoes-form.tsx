@@ -4,12 +4,12 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Loader2 } from 'lucide-react'
 import type { Organization } from '@/types'
-
-const PLANOS = ['free', 'basico', 'profissional', 'enterprise']
+import { LICENCAS, PLANOS, getLicencaId, type LicencaId } from '@/lib/modulos'
 
 export default function OrgAcoesForm({ org }: { org: Organization }) {
   const router = useRouter()
   const [plano, setPlano] = useState(org.plano)
+  const [licenca, setLicenca] = useState<LicencaId>(getLicencaId(org))
   const [ativo, setAtivo] = useState(org.ativo)
   const [loading, setLoading] = useState(false)
   const [msg, setMsg] = useState<string | null>(null)
@@ -21,7 +21,7 @@ export default function OrgAcoesForm({ org }: { org: Organization }) {
       const res = await fetch(`/api/superadmin/organizacoes/${org.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ plano, ativo }),
+        body: JSON.stringify({ plano, ativo, licenca }),
       })
       if (!res.ok) throw new Error()
       setMsg('Salvo com sucesso!')
@@ -35,8 +35,21 @@ export default function OrgAcoesForm({ org }: { org: Organization }) {
 
   return (
     <div className="space-y-3">
-      {/* Mobile: 2 colunas (Plano | Status). Desktop: linha horizontal */}
+      {/* Mobile: 2 colunas. Desktop: linha horizontal */}
       <div className="grid grid-cols-2 gap-3 sm:flex sm:flex-row sm:items-end sm:gap-4">
+        <div className="col-span-2 sm:col-span-1">
+          <label className="block text-xs text-gray-400 mb-1">Licença</label>
+          <select
+            value={licenca}
+            onChange={e => setLicenca(e.target.value as LicencaId)}
+            className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+          >
+            {(Object.keys(LICENCAS) as LicencaId[]).map(id => (
+              <option key={id} value={id} className="bg-gray-900">{LICENCAS[id].label}</option>
+            ))}
+          </select>
+        </div>
+
         <div>
           <label className="block text-xs text-gray-400 mb-1">Plano</label>
           <select
@@ -45,8 +58,11 @@ export default function OrgAcoesForm({ org }: { org: Organization }) {
             className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
           >
             {PLANOS.map(p => (
-              <option key={p} value={p} className="bg-gray-900">{p}</option>
+              <option key={p.value} value={p.value} className="bg-gray-900">{p.label}</option>
             ))}
+            {!PLANOS.some(p => p.value === plano) && (
+              <option value={plano} className="bg-gray-900">{plano}</option>
+            )}
           </select>
         </div>
 

@@ -54,7 +54,7 @@ export default async function FinanceiroPage() {
         </div>
         {canDelete && (
           <Link
-            href="/admin/financeiro/lancamentos/novo"
+            href="/admin/financeiro/lancamentos"
             className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 transition shrink-0"
           >
             <Plus size={15} />

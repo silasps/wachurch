@@ -3,8 +3,8 @@ import { redirect } from 'next/navigation'
 import { resolveOrgFromHost, getSiteConfig } from '@/lib/tenant'
 import { getSession } from '@/lib/auth'
 import { getLoginDestination } from '@/lib/auth'
-import { COLOR_PALETTE } from '@/types'
 import LoginForm from './login-form'
+import { coresDoSite } from '@/lib/cores'
 
 export default async function EntrarPage({
   searchParams,
@@ -32,8 +32,7 @@ export default async function EntrarPage({
     : 'Ostrick Social'
 
   const logoUrl = siteConfig?.logo_url || null
-  const corPrimaria = siteConfig?.cor_primaria || 'azul-oceano'
-  const colors = COLOR_PALETTE[corPrimaria as keyof typeof COLOR_PALETTE] || COLOR_PALETTE['azul-oceano']
+  const colors = coresDoSite(siteConfig)
 
   return (
     <div className="min-h-screen flex">
@@ -53,7 +52,7 @@ export default async function EntrarPage({
         )}
         <h1 className="text-3xl font-bold text-center mb-3">{orgName}</h1>
         <p className="text-white/80 text-center text-lg max-w-sm">
-          Plataforma de gestão para projetos sociais
+          Plataforma de gestão para igrejas e projetos sociais
         </p>
       </div>
 

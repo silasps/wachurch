@@ -4,7 +4,7 @@ import './globals.css'
 
 export const metadata: Metadata = {
   title: 'Ostrick Social',
-  description: 'Plataforma de gestão para projetos sociais',
+  description: 'Plataforma de gestão para igrejas e projetos sociais',
 }
 
 export default function RootLayout({

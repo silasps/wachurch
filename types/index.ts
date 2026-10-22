@@ -32,6 +32,10 @@ export type CorPrimaria =
   | 'indigo-confianca'
   | 'teal-equilibrio'
 
+// Tipo de conta e módulos licenciados (ver lib/modulos.ts)
+export type OrgTipo = 'igreja' | 'projeto_social'
+export type Modulo = 'igreja' | 'social'
+
 // ---- Database row types ----
 
 export interface Organization {
@@ -40,6 +44,8 @@ export interface Organization {
   nome: string
   cnpj: string | null
   plano: string
+  tipo: OrgTipo
+  modulos: Modulo[]
   ativo: boolean
   created_at: string
   email_contato: string | null
@@ -267,6 +273,30 @@ export interface SiteConfig {
   secoes_ativas: string[]
   publicado: boolean
   updated_at: string
+  // Cor exata da marca e tema (0012)
+  cor_personalizada: string | null
+  tema: 'claro' | 'escuro'
+  // Perfil da igreja (0011)
+  bio: string | null
+  capa_url: string | null
+  historia: string | null
+  ano_fundacao: number | null
+  denominacao: string | null
+  endereco: Endereco
+  horarios: HorarioCulto[]
+  lideranca: Lider[]
+}
+
+export interface HorarioCulto {
+  dia: string
+  hora: string
+  nome: string
+}
+
+export interface Lider {
+  nome: string
+  cargo: string
+  foto_url: string
 }
 
 export interface SitePost {
@@ -335,6 +365,93 @@ export interface LancamentoFinanceiro {
   observacoes: string | null
   created_by: string
   created_at: string
+}
+
+// ---- Igreja: membros ----
+
+export type MembroSituacao = 'pendente' | 'candidato' | 'ativo' | 'inativo' | 'recusado'
+export type MembroTipoCadastro = 'ja_membro' | 'quer_ser_membro'
+export type FormaIngresso = 'aclamacao' | 'transferencia' | 'batismo' | 'nao_sei'
+export type CaminhoIngresso = Exclude<FormaIngresso, 'nao_sei'>
+export type MembroSexo = 'feminino' | 'masculino'
+export type EstadoCivil = 'solteiro' | 'casado' | 'uniao_estavel' | 'divorciado' | 'viuvo'
+
+export interface Endereco {
+  cep?: string
+  logradouro?: string
+  numero?: string
+  complemento?: string
+  bairro?: string
+  cidade?: string
+  uf?: string
+}
+
+export interface Membro {
+  id: string
+  org_id: string
+  nome: string
+  cpf: string | null
+  data_nascimento: string | null
+  sexo: MembroSexo | null
+  estado_civil: EstadoCivil | null
+  foto_path: string | null
+  celular: string | null
+  celular_whatsapp: boolean
+  email: string | null
+  endereco: Endereco
+  tipo_cadastro: MembroTipoCadastro
+  situacao: MembroSituacao
+  motivo_inativacao: string | null
+  origem: 'formulario_publico' | 'secretaria'
+  forma_ingresso: FormaIngresso | null
+  igreja_origem: string | null
+  igreja_origem_cidade: string | null
+  carta_path: string | null
+  carta_entrega_presencial: boolean
+  carta_recebida: boolean
+  fez_curso_integracao: boolean | null
+  ano_batismo: number | null
+  data_batismo: string | null
+  membro_desde_ano: number | null
+  data_recepcao: string | null
+  responsavel_nome: string | null
+  responsavel_celular: string | null
+  possivel_duplicado_de: string | null
+  aceita_comunicacoes: boolean
+  observacoes_internas: string | null
+  aprovado_por: string | null
+  aprovado_em: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface Consentimento {
+  id: string
+  org_id: string
+  membro_id: string
+  finalidade: 'cadastro_membro' | 'comunicacoes'
+  versao: string
+  texto_hash: string
+  coletado_por: 'titular' | 'responsavel' | 'secretaria_presencial'
+  ip: string | null
+  user_agent: string | null
+  revogado_em: string | null
+  created_at: string
+}
+
+export interface MembresiaConfig {
+  id: string
+  org_id: string
+  formulario_aberto: boolean
+  curso_nome: string | null
+  curso_descricao: string | null
+  curso_caminhos: CaminhoIngresso[]
+  texto_aclamacao: string | null
+  texto_transferencia: string | null
+  texto_batismo: string | null
+  contato_privacidade: string | null
+  mensagem_sucesso: string | null
+  updated_at: string
 }
 
 // ---- Paleta de cores ----

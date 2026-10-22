@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { requireRole } from '@/lib/auth'
+import { CONTENT_TYPE_WEBP, paraWebp } from '@/lib/imagem-server'
 import { createServiceClient } from '@/lib/supabase-server'
 
 const BUCKET = 'site-assets'
@@ -29,10 +30,16 @@ export async function POST(req: Request) {
   await ensureBucket(supabase)
 
   const path = `${profile.org_id}/logo-${Date.now()}.webp`
+  let conteudo: Buffer
+  try {
+    conteudo = await paraWebp(file, { maxLado: 800, qualidade: 90 })
+  } catch {
+    return NextResponse.json({ error: 'Não foi possível processar esta imagem' }, { status: 400 })
+  }
 
   const { error } = await supabase.storage
     .from(BUCKET)
-    .upload(path, file, { contentType: 'image/webp', upsert: true })
+    .upload(path, conteudo, { contentType: CONTENT_TYPE_WEBP, upsert: true })
 
   if (error) {
     console.error('[logo upload]', error)

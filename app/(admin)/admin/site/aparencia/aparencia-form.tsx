@@ -1,8 +1,10 @@
 'use client'
 
 import { useState } from 'react'
-import { Loader2, Check, Eye } from 'lucide-react'
+import { Loader2, Check, Eye, Pipette, Sun, Moon } from 'lucide-react'
 import { COLOR_PALETTE } from '@/types'
+import { coresDoSite, ehHex } from '@/lib/cores'
+import { corPredominante } from '@/lib/imagem'
 import type { SiteConfig, SiteTemplate, CorPrimaria } from '@/types'
 import { LogoUploader } from './logo-uploader'
 
@@ -17,9 +19,11 @@ const TEMPLATES: { id: SiteTemplate; label: string; desc: string; emoji: string 
 interface Props {
   config: SiteConfig | null
   subdomain?: string
+  /** Conta de igreja: mostra a escolha de tema (aplicado ao perfil público) */
+  ehIgreja?: boolean
 }
 
-export default function AparenciaForm({ config, subdomain }: Props) {
+export default function AparenciaForm({ config, subdomain, ehIgreja = false }: Props) {
   const [loading, setLoading] = useState(false)
   const [saved, setSaved] = useState(false)
   const [template, setTemplate] = useState<SiteTemplate>(config?.template_id || 'comunitario')
@@ -27,7 +31,27 @@ export default function AparenciaForm({ config, subdomain }: Props) {
   const [publicado, setPublicado] = useState(config?.publicado ?? false)
   const [logoUrl, setLogoUrl] = useState(config?.logo_url || '')
 
-  const selectedColors = COLOR_PALETTE[cor]
+  const [corPersonalizada, setCorPersonalizada] = useState(config?.cor_personalizada ?? '')
+  const [tema, setTema] = useState<'claro' | 'escuro'>(config?.tema ?? 'claro')
+  const [extraindo, setExtraindo] = useState(false)
+  const [erroCor, setErroCor] = useState<string | null>(null)
+
+  const selectedColors = coresDoSite({ cor_primaria: cor, cor_personalizada: ehHex(corPersonalizada) ? corPersonalizada : null })
+
+  async function usarCorDoLogo() {
+    if (!logoUrl) return
+    setExtraindo(true)
+    setErroCor(null)
+    try {
+      const hex = await corPredominante(logoUrl)
+      if (hex) setCorPersonalizada(hex)
+      else setErroCor('Não encontramos uma cor marcante no logo. Escolha manualmente.')
+    } catch {
+      setErroCor('Não foi possível ler o logo. Escolha a cor manualmente.')
+    } finally {
+      setExtraindo(false)
+    }
+  }
 
   async function handleSave() {
     setLoading(true)
@@ -35,7 +59,11 @@ export default function AparenciaForm({ config, subdomain }: Props) {
       await fetch('/api/admin/site/config', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ template_id: template, cor_primaria: cor, publicado, logo_url: logoUrl || null }),
+        body: JSON.stringify({
+          template_id: template, cor_primaria: cor, publicado, logo_url: logoUrl || null,
+          cor_personalizada: ehHex(corPersonalizada) ? corPersonalizada.toLowerCase() : null,
+          ...(ehIgreja ? { tema } : {}),
+        }),
       })
       setSaved(true)
       setTimeout(() => setSaved(false), 2000)
@@ -82,7 +110,7 @@ export default function AparenciaForm({ config, subdomain }: Props) {
             <button
               key={key}
               type="button"
-              onClick={() => setCor(key)}
+              onClick={() => { setCor(key); setCorPersonalizada('') }}
               className={`flex items-center gap-2 px-3 py-2 rounded-lg border-2 text-xs font-medium transition ${
                 cor === key ? 'border-gray-900' : 'border-transparent hover:border-gray-200'
               }`}
@@ -93,13 +121,81 @@ export default function AparenciaForm({ config, subdomain }: Props) {
           ))}
         </div>
 
+        {/* Cor exata da marca (substitui a paleta) */}
+        <div className="mt-5 pt-5 border-t border-gray-100">
+          <p className="text-sm font-medium text-gray-700 mb-1">Cor exata da igreja</p>
+          <p className="text-xs text-gray-500 mb-3">Use a cor da sua marca. Quando preenchida, substitui a paleta acima.</p>
+          <div className="flex flex-wrap items-center gap-2">
+            <input
+              type="color"
+              value={ehHex(corPersonalizada) ? corPersonalizada : selectedColors.marca}
+              onChange={e => setCorPersonalizada(e.target.value)}
+              className="w-11 h-10 rounded-lg border border-gray-300 cursor-pointer p-0.5 bg-white"
+              aria-label="Escolher cor"
+            />
+            <input
+              value={corPersonalizada}
+              onChange={e => setCorPersonalizada(e.target.value.trim())}
+              placeholder="#FD6A08"
+              maxLength={7}
+              className="w-28 px-3 py-2 text-sm font-mono border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              aria-label="Código da cor"
+            />
+            <button
+              type="button"
+              onClick={usarCorDoLogo}
+              disabled={!logoUrl || extraindo}
+              title={logoUrl ? undefined : 'Envie o logo primeiro'}
+              className="flex items-center gap-1.5 px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-40"
+            >
+              {extraindo ? <Loader2 size={14} className="animate-spin" /> : <Pipette size={14} />}
+              Usar a cor do logo
+            </button>
+            {corPersonalizada && (
+              <button type="button" onClick={() => setCorPersonalizada('')} className="text-sm text-gray-500 hover:text-gray-800 underline">
+                Voltar à paleta
+              </button>
+            )}
+          </div>
+          {corPersonalizada && !ehHex(corPersonalizada) && <p className="mt-2 text-xs text-red-600">Use o formato #RRGGBB, ex.: #FD6A08</p>}
+          {erroCor && <p className="mt-2 text-xs text-red-600">{erroCor}</p>}
+        </div>
+
         {/* Preview da cor selecionada */}
         <div className="mt-4 flex items-center gap-3">
-          <div className="flex-1 h-10 rounded-xl" style={{ backgroundColor: selectedColors.primary }} />
+          <div className="flex-1 h-10 rounded-xl" style={{ backgroundColor: selectedColors.marca }} />
+          <div className="flex-1 h-10 rounded-xl flex items-center justify-center text-white text-xs font-semibold" style={{ backgroundColor: selectedColors.primary }}>Botão</div>
           <div className="flex-1 h-10 rounded-xl" style={{ backgroundColor: selectedColors.secondary }} />
         </div>
-        <p className="text-xs text-gray-400 mt-2">Cor principal · Cor de destaque</p>
+        <p className="text-xs text-gray-400 mt-2">Cor da marca · Botões com texto branco (ajustada para leitura) · Destaque</p>
       </div>
+
+      {/* Tema da página da igreja */}
+      {ehIgreja && (
+        <div className="bg-white rounded-xl border border-gray-200 p-6">
+          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-1">Tema da página</h2>
+          <p className="text-xs text-gray-500 mb-4">Fundo da página pública da igreja.</p>
+          <div className="grid grid-cols-2 gap-3 max-w-md">
+            {([['claro', 'Claro', Sun, '#f9fafb', '#111827'], ['escuro', 'Escuro', Moon, '#0a0a0a', '#ffffff']] as const).map(([valor, rotulo, Icone, fundo, texto]) => (
+              <button
+                key={valor}
+                type="button"
+                onClick={() => setTema(valor)}
+                className={`relative rounded-xl border-2 overflow-hidden text-left transition ${tema === valor ? 'border-blue-500' : 'border-gray-200 hover:border-gray-300'}`}
+              >
+                <div className="h-16 p-3 flex flex-col justify-between" style={{ backgroundColor: fundo }}>
+                  <div className="h-2 w-16 rounded" style={{ backgroundColor: texto, opacity: 0.8 }} />
+                  <div className="h-4 w-20 rounded" style={{ backgroundColor: selectedColors.marca }} />
+                </div>
+                <div className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-800">
+                  <Icone size={15} /> {rotulo}
+                  {tema === valor && <Check size={15} className="ml-auto text-blue-600" />}
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Logo */}
       <div className="bg-white rounded-xl border border-gray-200 p-6">
