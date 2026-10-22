@@ -133,3 +133,26 @@ export async function registrarConsentimentos(params: {
   const { error } = await supabase.from('consentimentos').insert(linhas)
   if (error) throw error
 }
+
+// Novo consentimento para comunicados, coletado pela secretaria a pedido do titular
+export async function registrarConsentimentoComunicacoes(params: {
+  orgId: string
+  membroId: string
+  igreja: string
+  contato: string | null
+  ip: string | null
+  userAgent: string | null
+}) {
+  const supabase = await createServiceClient()
+  const { error } = await supabase.from('consentimentos').insert({
+    org_id: params.orgId,
+    membro_id: params.membroId,
+    finalidade: 'comunicacoes',
+    versao: CONSENTIMENTO_MEMBRO_VERSAO,
+    texto_hash: sha256(textoCanonicoComunicacoes({ igreja: params.igreja })),
+    coletado_por: 'secretaria_presencial',
+    ip: params.ip,
+    user_agent: params.userAgent,
+  })
+  if (error) throw error
+}

@@ -10,7 +10,7 @@ export type DadosMembro = Pick<Membro,
   | 'celular' | 'celular_whatsapp' | 'email' | 'endereco'
   | 'tipo_cadastro' | 'forma_ingresso' | 'igreja_origem' | 'igreja_origem_cidade'
   | 'carta_entrega_presencial' | 'fez_curso_integracao'
-  | 'ano_batismo' | 'membro_desde_ano'
+  | 'ano_batismo' | 'data_batismo' | 'membro_desde_ano'
   | 'responsavel_nome' | 'responsavel_celular' | 'aceita_comunicacoes'
 >
 
@@ -102,6 +102,10 @@ export function validarDadosMembro(
 
   const anoBatismo = ano(entrada.ano_batismo)
   if (Number.isNaN(anoBatismo)) erros.ano_batismo = 'Ano inválido.'
+  const dataBatismo = texto(entrada.data_batismo, 10)
+  if (dataBatismo && (!/^\d{4}-\d{2}-\d{2}$/.test(dataBatismo) || dataBatismo > new Date().toISOString().slice(0, 10))) {
+    erros.data_batismo = 'Data do batismo inválida.'
+  }
   const membroDesde = ano(entrada.membro_desde_ano)
   if (Number.isNaN(membroDesde)) erros.membro_desde_ano = 'Ano inválido.'
 
@@ -131,7 +135,8 @@ export function validarDadosMembro(
     igreja_origem_cidade: igrejaOrigemCidade || null,
     carta_entrega_presencial: bool(entrada.carta_entrega_presencial),
     fez_curso_integracao: fezCurso,
-    ano_batismo: Number.isNaN(anoBatismo) ? null : anoBatismo,
+    ano_batismo: Number.isNaN(anoBatismo) ? null : anoBatismo ?? (dataBatismo && !erros.data_batismo ? Number(dataBatismo.slice(0, 4)) : null),
+    data_batismo: dataBatismo && !erros.data_batismo ? dataBatismo : null,
     membro_desde_ano: Number.isNaN(membroDesde) ? null : membroDesde,
     responsavel_nome: responsavelNome || null,
     responsavel_celular: responsavelCelular ? maskPhone(responsavelCelular) : null,

@@ -186,7 +186,7 @@ app/
   acesso-negado/                — página de erro 403
   api/
     admin/...                   — rotas de mutação usadas pelos painéis admin (usuarios, alunos, turmas, financeiro, site, solicitacoes, membros, membresia-config)
-    admin/membros/              — POST (multipart, secretaria) · [id] GET consentimentos / PATCH acao=editar|checklist|confirmar|receber|recusar|inativar|reativar|reabrir|revogar_comunicacoes / DELETE (apaga arquivos) · [id]/arquivos · [id]/mesclar
+    admin/membros/              — POST (multipart, secretaria) · [id] GET consentimentos / PATCH acao=editar|checklist|confirmar|receber|recusar|inativar|reativar|reabrir|comunicacoes ({aceita}: desligar revoga, religar grava novo consentimento) / DELETE (apaga arquivos) · [id]/arquivos · [id]/mesclar
     professor/...                — ex: turmas/[id]/chamada
     superadmin/...               — organizacoes, impersonate, melhorias
     auth/signout/

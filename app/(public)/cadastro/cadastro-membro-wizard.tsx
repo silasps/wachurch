@@ -48,7 +48,7 @@ interface Dados {
   cidade: string
   uf: string
   ja_forma: '' | FormaIngresso
-  ano_batismo: string
+  batismo: string          // 'AAAA' ou 'DD/MM/AAAA'
   membro_desde_ano: string
   consentimento: boolean
   comunicacoes: boolean
@@ -58,7 +58,7 @@ const VAZIO: Dados = {
   tipo: '', forma: '', igreja_origem: '', igreja_origem_cidade: '', entrega_presencial: false, curso: '',
   nome: '', cpf: '', nascimento: '', sexo: '', estado_civil: '', responsavel_nome: '', responsavel_celular: '',
   celular: '', whatsapp: true, email: '', cep: '', logradouro: '', numero: '', complemento: '', bairro: '',
-  cidade: '', uf: '', ja_forma: '', ano_batismo: '', membro_desde_ano: '', consentimento: false, comunicacoes: false,
+  cidade: '', uf: '', ja_forma: '', batismo: '', membro_desde_ano: '', consentimento: false, comunicacoes: false,
 }
 
 const TITULOS: Record<Etapa, string> = {
@@ -87,7 +87,7 @@ const ETAPA_DO_CAMPO: Record<string, Etapa> = {
   nome: 'dados', cpf: 'dados', data_nascimento: 'dados', sexo: 'dados', foto: 'dados',
   responsavel_nome: 'dados', responsavel_celular: 'dados',
   celular: 'contato', email: 'contato',
-  ano_batismo: 'historico', membro_desde_ano: 'historico',
+  ano_batismo: 'historico', data_batismo: 'historico', membro_desde_ano: 'historico',
 }
 
 interface Props {
@@ -125,6 +125,7 @@ export default function CadastroMembroWizard({ igreja, orgSlug, primaryColor, co
   const indice = etapas.indexOf(etapa)
 
   const nascimentoIso = parseDataBR(dados.nascimento)
+  const batismoIso = parseDataBR(dados.batismo.trim())
   const idade = useMemo(() => (nascimentoIso ? calcularIdade(nascimentoIso) : null), [nascimentoIso])
   const menor = idade !== null && idade >= 0 && idade < 18
   const perguntaCurso = dados.tipo === 'quer_ser_membro' && cursoSeAplica(config, dados.forma)
@@ -137,7 +138,7 @@ export default function CadastroMembroWizard({ igreja, orgSlug, primaryColor, co
       if (salvo) {
         const { dados: d, etapa: e, salvoEm, arquivos } = JSON.parse(salvo)
         if (Date.now() - salvoEm < RASCUNHO_VALIDADE_MS && d?.tipo) {
-          setDados({ ...VAZIO, ...d, consentimento: false })
+          setDados({ ...VAZIO, ...d, batismo: d.batismo ?? d.ano_batismo ?? '', consentimento: false })
           if (e) setEtapa(e)
           setArquivosPerdidos({ foto: !!arquivos?.foto, carta: !!arquivos?.carta })
           setRascunhoRestaurado(true)
@@ -231,7 +232,8 @@ export default function CadastroMembroWizard({ igreja, orgSlug, primaryColor, co
     }
     if (e === 'historico') {
       if (anoInvalido(dados.membro_desde_ano)) r.membro_desde_ano = `Digite um ano entre ${ANO_MINIMO} e ${anoAtual}.`
-      if (anoInvalido(dados.ano_batismo)) r.ano_batismo = `Digite um ano entre ${ANO_MINIMO} e ${anoAtual}.`
+      const b = dados.batismo.trim()
+      if (b && (/^\d{4}$/.test(b) ? anoInvalido(b) : !batismoIso)) r.batismo = 'Digite só o ano (ex.: 2004) ou a data completa (ex.: 15/08/2004).'
     }
     if (e === 'revisao' && !dados.consentimento) r.consentimento = 'Marque a autorização para poder enviar.'
     return r
@@ -284,8 +286,8 @@ export default function CadastroMembroWizard({ igreja, orgSlug, primaryColor, co
     const fd = new FormData()
     fd.append('tipo_cadastro', dados.tipo)
     fd.append('forma_ingresso', queroSer ? dados.forma : dados.ja_forma)
-    fd.append('igreja_origem', queroSer ? dados.igreja_origem : '')
-    fd.append('igreja_origem_cidade', queroSer && dados.forma === 'transferencia' ? dados.igreja_origem_cidade : '')
+    fd.append('igreja_origem', dados.igreja_origem)
+    fd.append('igreja_origem_cidade', dados.igreja_origem_cidade)
     fd.append('carta_entrega_presencial', String(queroSer && dados.forma === 'transferencia' && dados.entrega_presencial))
     fd.append('fez_curso_integracao', perguntaCurso ? dados.curso : '')
     fd.append('nome', dados.nome)
@@ -302,7 +304,8 @@ export default function CadastroMembroWizard({ igreja, orgSlug, primaryColor, co
       cep: dados.cep, logradouro: dados.logradouro, numero: dados.numero, complemento: dados.complemento,
       bairro: dados.bairro, cidade: dados.cidade, uf: dados.uf,
     }))
-    fd.append('ano_batismo', queroSer ? '' : dados.ano_batismo)
+    fd.append('ano_batismo', queroSer || !/^\d{4}$/.test(dados.batismo.trim()) ? '' : dados.batismo.trim())
+    fd.append('data_batismo', queroSer ? '' : batismoIso ?? '')
     fd.append('membro_desde_ano', queroSer ? '' : dados.membro_desde_ano)
     fd.append('consentimento', String(dados.consentimento))
     fd.append('aceita_comunicacoes', String(dados.comunicacoes))
@@ -457,6 +460,12 @@ export default function CadastroMembroWizard({ igreja, orgSlug, primaryColor, co
             {dados.forma === 'aclamacao' && (
               <Campo id="igreja_origem" label="Igreja onde você congregava antes (se houver)" erro={erros.igreja_origem}>
                 <Entrada id="igreja_origem" value={dados.igreja_origem} onChange={v => set('igreja_origem', v)} erro={erros.igreja_origem} />
+                {dados.igreja_origem.trim() && (
+                  <div className="mt-3">
+                    <label htmlFor="igreja_origem_cidade_acl" className="block text-base font-semibold text-gray-800 mb-1">Cidade dessa igreja</label>
+                    <Entrada id="igreja_origem_cidade_acl" value={dados.igreja_origem_cidade} onChange={v => set('igreja_origem_cidade', v)} placeholder="Ex.: Contagem - MG" />
+                  </div>
+                )}
                 {avisoSemIgreja && !dados.igreja_origem.trim() && (
                   <div role="alert" className="mt-3 flex items-start gap-3 p-4 bg-amber-50 border border-amber-300 rounded-xl text-base text-amber-900">
                     <Info size={20} className="shrink-0 mt-0.5" />
@@ -671,10 +680,10 @@ export default function CadastroMembroWizard({ igreja, orgSlug, primaryColor, co
                 erro={erros.membro_desde_ano} inputMode="numeric" placeholder="Ex.: 2010" maxLength={4}
               />
             </Campo>
-            <Campo id="ano_batismo" label="Em que ano você foi batizado?" erro={erros.ano_batismo}>
+            <Campo id="batismo" label="Quando você foi batizado?" ajuda="Pode ser só o ano (ex.: 2004) ou a data completa (ex.: 15/08/2004)." erro={erros.batismo}>
               <Entrada
-                id="ano_batismo" value={dados.ano_batismo} onChange={v => set('ano_batismo', soDigitos(v).slice(0, 4))}
-                erro={erros.ano_batismo} inputMode="numeric" placeholder="Ex.: 1998" maxLength={4}
+                id="batismo" value={dados.batismo} onChange={v => set('batismo', mascaraAnoOuData(v))}
+                erro={erros.batismo} inputMode="numeric" placeholder="Ano ou dd/mm/aaaa" maxLength={10}
               />
             </Campo>
             <div>
@@ -687,6 +696,14 @@ export default function CadastroMembroWizard({ igreja, orgSlug, primaryColor, co
                 colunas={2}
               />
             </div>
+            <Campo id="igreja_origem_hist" label="Veio de outra igreja? Qual?" ajuda="Deixe em branco se esta foi sua primeira igreja.">
+              <Entrada id="igreja_origem_hist" value={dados.igreja_origem} onChange={v => set('igreja_origem', v)} />
+            </Campo>
+            {dados.igreja_origem.trim() && (
+              <Campo id="igreja_origem_cidade_hist" label="Cidade dessa igreja">
+                <Entrada id="igreja_origem_cidade_hist" value={dados.igreja_origem_cidade} onChange={v => set('igreja_origem_cidade', v)} placeholder="Ex.: Contagem - MG" />
+              </Campo>
+            )}
           </div>
         )}
 
@@ -730,11 +747,12 @@ export default function CadastroMembroWizard({ igreja, orgSlug, primaryColor, co
               )}
             </Resumo>
 
-            {dados.tipo === 'ja_membro' && (dados.membro_desde_ano || dados.ano_batismo || dados.ja_forma) && (
+            {dados.tipo === 'ja_membro' && (dados.membro_desde_ano || dados.batismo || dados.ja_forma || dados.igreja_origem) && (
               <Resumo titulo={TITULOS.historico} onAlterar={() => irPara('historico')}>
                 {dados.membro_desde_ano && <Linha rotulo="Membro desde" valor={dados.membro_desde_ano} />}
-                {dados.ano_batismo && <Linha rotulo="Batismo" valor={dados.ano_batismo} />}
+                {dados.batismo && <Linha rotulo="Batismo" valor={dados.batismo} />}
                 {dados.ja_forma && <Linha rotulo="Entrou por" valor={FORMA_INGRESSO_LABELS[dados.ja_forma]} />}
+                {dados.igreja_origem && <Linha rotulo="Igreja anterior" valor={[dados.igreja_origem, dados.igreja_origem_cidade].filter(Boolean).join(' — ')} />}
               </Resumo>
             )}
 
@@ -818,6 +836,12 @@ export default function CadastroMembroWizard({ igreja, orgSlug, primaryColor, co
       </div>
     </div>
   )
+}
+
+// Até 4 dígitos fica como ano (2004); a partir do 5º vira data (15/08/2004)
+function mascaraAnoOuData(v: string): string {
+  const d = soDigitos(v).slice(0, 8)
+  return d.length <= 4 ? d : maskData(d)
 }
 
 // ── Peças de UI (grandes, alto contraste, rótulo sempre visível) ──

@@ -1,7 +1,10 @@
 import { createServiceClient } from '@/lib/supabase-server'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Users } from 'lucide-react'
+import { ArrowLeft, Users, ExternalLink } from 'lucide-react'
+import { headers } from 'next/headers'
+import { urlPublicaOrg } from '@/lib/tenant'
+import { orgTemModulo } from '@/lib/modulos'
 import { formatDate } from '@/lib/utils'
 import type { Organization, Profile } from '@/types'
 import OrgAcoesForm from './org-acoes-form'
@@ -25,6 +28,15 @@ export default async function OrgDetailPage({
 
   if (!org) notFound()
 
+  // /s/[slug] funciona em qualquer host; o subdomínio depende do DNS curinga do domínio da plataforma
+  const host = (await headers()).get('host') || ''
+  const subdominio = urlPublicaOrg(org.slug, host)
+  const linksPublicos = [
+    { label: 'Página pública', href: `/s/${org.slug}` },
+    { label: 'Subdomínio', href: subdominio },
+    ...(orgTemModulo(org as Organization, 'igreja') ? [{ label: 'Cadastro de membros', href: `${subdominio}/cadastro` }] : []),
+  ]
+
   const adminCount = profiles?.filter(p => p.role === 'admin' || p.role === 'funcionario').length ?? 0
   const professorCount = profiles?.filter(p => p.role === 'professor').length ?? 0
   const alunoCount = profiles?.filter(p => p.role === 'aluno').length ?? 0
@@ -39,6 +51,19 @@ export default async function OrgDetailPage({
         <div>
           <h1 className="text-2xl font-bold">{org.nome}</h1>
           <p className="text-gray-400 text-sm mt-1 font-mono">{org.slug}</p>
+          <div className="flex flex-wrap gap-2 mt-3">
+            {linksPublicos.map(l => (
+              <a
+                key={l.label}
+                href={l.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-white/5 border border-white/10 rounded-lg text-gray-300 hover:bg-white/10 hover:text-white transition"
+              >
+                <ExternalLink size={13} /> {l.label}
+              </a>
+            ))}
+          </div>
         </div>
         <span className={`shrink-0 px-3 py-1 rounded-full text-xs font-medium ${org.ativo ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'}`}>
           {org.ativo ? 'Ativa' : 'Inativa'}

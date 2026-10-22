@@ -78,6 +78,7 @@ export async function POST(request: Request) {
   // Histórico só faz sentido para quem já é membro
   if (queroSer) {
     dados.ano_batismo = null
+    dados.data_batismo = null
     dados.membro_desde_ano = null
   }
   if (idade !== null && idade >= 18) {

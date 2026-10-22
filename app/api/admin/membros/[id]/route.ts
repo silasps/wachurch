@@ -2,7 +2,10 @@ import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase-server'
 import { canGerenciarMembros, canVerMembros } from '@/lib/rbac'
 import { validarDadosMembro } from '@/lib/membros-validacao'
-import { autorizarMembros, encontrarDuplicado, removerArquivos } from '@/lib/membros-server'
+import {
+  autorizarMembros, encontrarDuplicado, getClientIp, getMembresiaConfig, registrarConsentimentoComunicacoes, removerArquivos,
+} from '@/lib/membros-server'
+import { contatoPrivacidade } from '@/lib/membros'
 import type { Membro, MembroSituacao } from '@/types'
 
 interface Params { params: Promise<{ id: string }> }
@@ -71,7 +74,7 @@ export async function PATCH(request: Request, { params }: Params) {
       data_batismo: ISO_DATA.test(body.data_batismo ?? '') ? body.data_batismo : null,
       data_recepcao: ISO_DATA.test(body.data_recepcao ?? '') ? body.data_recepcao : null,
     })
-    // Consentimento de comunicações só muda pelo titular (ação 'revogar_comunicacoes' registra a revogação)
+    // Consentimento de comunicações só muda pela ação 'comunicacoes' (registra revogação/novo consentimento)
     update.aceita_comunicacoes = membro.aceita_comunicacoes
     if (body.carta_entrega_presencial === undefined) update.carta_entrega_presencial = membro.carta_entrega_presencial
     // Corrigir o CPF resolve a suspeita de duplicidade
@@ -81,16 +84,25 @@ export async function PATCH(request: Request, { params }: Params) {
     if (body.fez_curso_integracao !== undefined) update.fez_curso_integracao = body.fez_curso_integracao === null ? null : !!body.fez_curso_integracao
     if (body.carta_recebida !== undefined) update.carta_recebida = !!body.carta_recebida
     if (body.data_batismo !== undefined) update.data_batismo = ISO_DATA.test(body.data_batismo ?? '') ? body.data_batismo : null
-  } else if (acao === 'revogar_comunicacoes') {
-    // Titular pediu para não receber mais comunicados (LGPD art. 18, IX)
-    update.aceita_comunicacoes = false
+  } else if (acao === 'comunicacoes') {
+    // Só a pedido do titular. Desligar = revogação (LGPD art. 18, IX); religar = novo consentimento registrado
+    const aceita = body.aceita === true
+    update.aceita_comunicacoes = aceita
     const supabase = await createServiceClient()
-    await supabase
-      .from('consentimentos')
-      .update({ revogado_em: new Date().toISOString() })
-      .eq('membro_id', id)
-      .eq('finalidade', 'comunicacoes')
-      .is('revogado_em', null)
+    if (aceita && !membro.aceita_comunicacoes) {
+      const config = await getMembresiaConfig(org.id)
+      await registrarConsentimentoComunicacoes({
+        orgId: org.id, membroId: id, igreja: org.nome, contato: contatoPrivacidade(config, org),
+        ip: getClientIp(request.headers), userAgent: request.headers.get('user-agent'),
+      })
+    } else if (!aceita) {
+      await supabase
+        .from('consentimentos')
+        .update({ revogado_em: new Date().toISOString() })
+        .eq('membro_id', id)
+        .eq('finalidade', 'comunicacoes')
+        .is('revogado_em', null)
+    }
   } else if (acao in ACOES) {
     const regra = ACOES[acao]
     if (!regra.de.includes(membro.situacao)) {

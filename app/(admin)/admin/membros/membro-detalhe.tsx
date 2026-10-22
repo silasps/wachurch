@@ -41,6 +41,10 @@ export default function MembroDetalhe({ membro: m, config, onEditar, onChanged, 
   const [dataBatismo, setDataBatismo] = useState(m.data_batismo ?? '')
   const [consentimentos, setConsentimentos] = useState<Consentimento[] | null>(null)
 
+  const [aceitaComunicacoes, setAceitaComunicacoes] = useState(m.aceita_comunicacoes)
+  const [salvandoComunicacoes, setSalvandoComunicacoes] = useState(false)
+  const [versaoConsentimentos, setVersaoConsentimentos] = useState(0)
+
   useEffect(() => {
     let ativo = true
     fetch(`/api/admin/membros/${m.id}`)
@@ -48,7 +52,31 @@ export default function MembroDetalhe({ membro: m, config, onEditar, onChanged, 
       .then(d => { if (ativo) setConsentimentos(d.consentimentos) })
       .catch(() => { if (ativo) setConsentimentos([]) })
     return () => { ativo = false }
-  }, [m.id])
+  }, [m.id, versaoConsentimentos])
+
+  useEffect(() => setAceitaComunicacoes(m.aceita_comunicacoes), [m.aceita_comunicacoes])
+
+  async function alternarComunicacoes() {
+    const novo = !aceitaComunicacoes
+    setAceitaComunicacoes(novo) // otimista: a chave muda na hora
+    setSalvandoComunicacoes(true)
+    setErro(null)
+    try {
+      const res = await fetch(`/api/admin/membros/${m.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ acao: 'comunicacoes', aceita: novo }),
+      })
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'Não foi possível salvar.')
+      setVersaoConsentimentos(v => v + 1)
+      onChanged()
+    } catch (err) {
+      setAceitaComunicacoes(!novo)
+      setErro(err instanceof Error ? err.message : 'Não foi possível salvar.')
+    } finally {
+      setSalvandoComunicacoes(false)
+    }
+  }
 
   async function chamar(rotulo: string, url: string, init: RequestInit, depois: () => void = onChanged) {
     setCarregando(rotulo)
@@ -215,15 +243,25 @@ export default function MembroDetalhe({ membro: m, config, onEditar, onChanged, 
             ))}
           </ul>
         )}
-        {m.aceita_comunicacoes && (
+        <div className="mt-3 flex items-center justify-between gap-3 p-3 bg-gray-50 rounded-lg">
+          <div>
+            <p className="text-sm font-medium text-gray-900">Aceita receber comunicados</p>
+            <p className="text-xs text-gray-500">WhatsApp ou e-mail. Altere só a pedido do titular — a mudança fica registrada.</p>
+          </div>
           <button
-            onClick={() => acao('revogar_comunicacoes')}
-            disabled={!!carregando}
-            className="mt-2 text-xs text-gray-500 underline hover:text-gray-700 disabled:opacity-50"
+            type="button"
+            role="switch"
+            aria-checked={aceitaComunicacoes}
+            aria-label="Aceita receber comunicados"
+            onClick={alternarComunicacoes}
+            disabled={salvandoComunicacoes}
+            className={`relative shrink-0 w-12 h-7 rounded-full transition-colors disabled:opacity-70 ${aceitaComunicacoes ? 'bg-green-600' : 'bg-gray-300'}`}
           >
-            Titular pediu para não receber mais comunicados
+            <span className={`absolute top-1 left-1 w-5 h-5 rounded-full bg-white shadow flex items-center justify-center transition-transform ${aceitaComunicacoes ? 'translate-x-5' : ''}`}>
+              {salvandoComunicacoes && <Loader2 size={12} className="animate-spin text-gray-500" />}
+            </span>
           </button>
-        )}
+        </div>
       </Secao>
 
       {/* Acompanhamento do candidato */}

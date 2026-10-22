@@ -331,7 +331,7 @@ export default function MembroForm({ inicial, config, onSuccess, onCancel }: Pro
             <input id="m-ano-bat" value={form.ano_batismo} onChange={e => set('ano_batismo', soDigitos(e.target.value).slice(0, 4))} inputMode="numeric" className={input} />
           </div>
           <div>
-            <label htmlFor="m-data-bat" className={label}>Data do batismo (nesta igreja)</label>
+            <label htmlFor="m-data-bat" className={label}>Data do batismo</label>
             <input id="m-data-bat" type="date" value={form.data_batismo} onChange={e => set('data_batismo', e.target.value)} className={input} />
           </div>
           <div>
