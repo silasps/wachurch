@@ -1,4 +1,5 @@
 import { headers } from 'next/headers'
+import { resolveOrgFromHost } from '@/lib/tenant'
 import { requireRole } from '@/lib/auth'
 import { requireModulo } from '@/lib/org'
 import { createServiceClient } from '@/lib/supabase-server'
@@ -75,16 +76,18 @@ export default async function MembrosPage({
 
   const config = await getMembresiaConfig(org.id)
 
-  // Link do formulário público: domínio próprio verificado > subdomínio da plataforma
+  // Link do formulário público: domínio próprio verificado > host do tenant > caminho /s/<slug> no host atual
+  // (o caminho funciona em qualquer endereço, inclusive *.vercel.app antes do DNS curinga)
   const host = (await headers()).get('host') || ''
+  const protocolo = host.includes('localhost') ? 'http' : 'https'
   const { data: dominio } = await supabase
     .from('custom_domains').select('domain').eq('org_id', org.id).eq('verificado', true).limit(1).maybeSingle()
-  const porta = host.includes(':') ? `:${host.split(':')[1]}` : ''
-  const base = dominio?.domain
-    ? `https://${dominio.domain}`
-    : host.includes('localhost')
-      ? `http://${org.slug}.localhost${porta}`
-      : `https://${org.slug}.ostricksocial.com.br`
+  const noHostDaIgreja = (await resolveOrgFromHost(host))?.org.id === org.id
+  const linkCadastro = dominio?.domain
+    ? `https://${dominio.domain}/cadastro`
+    : noHostDaIgreja
+      ? `${protocolo}://${host}/cadastro`
+      : `${protocolo}://${host}/s/${org.slug}/cadastro`
 
   return (
     <MembrosList
@@ -103,7 +106,7 @@ export default async function MembrosPage({
         contato_privacidade: config.contato_privacidade,
         mensagem_sucesso: config.mensagem_sucesso,
       }}
-      linkCadastro={`${base}/cadastro`}
+      linkCadastro={linkCadastro}
       podeConfigurar={canConfigurarMembresia(profile.role)}
     />
   )

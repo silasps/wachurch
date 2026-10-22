@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase-server'
-import { resolveOrgFromHost } from '@/lib/tenant'
+import { getOrgBySlug, resolveOrgFromHost } from '@/lib/tenant'
 import { orgTemModulo } from '@/lib/modulos'
 import {
   CARTA_MAX_BYTES, CARTA_MIME, FOTO_MAX_BYTES, FOTO_MIME, contatoPrivacidade, cursoSeAplica,
@@ -11,27 +11,28 @@ import {
 } from '@/lib/membros-server'
 
 // Formulário público de cadastro de membros (multipart: campos + foto + carta).
-// Grava com service_role DEPOIS de resolver a org pelo host — não existe policy anônima
+// Grava com service_role DEPOIS de resolver a org (host ou slug) — não existe policy anônima
 // em `membros` (dado sensível pela LGPD). A resposta é a mesma havendo ou não CPF repetido,
 // para não revelar quem já é membro.
 export async function POST(request: Request) {
-  const host = request.headers.get('host') || ''
-  const tenant = await resolveOrgFromHost(host)
-  if (!tenant || !orgTemModulo(tenant.org, 'igreja')) {
-    return NextResponse.json({ error: 'Igreja não encontrada.' }, { status: 404 })
-  }
-  const org = tenant.org
-
-  const config = await getMembresiaConfig(org.id)
-  if (!config.formulario_aberto) {
-    return NextResponse.json({ error: 'O cadastro está fechado no momento.' }, { status: 403 })
-  }
-
   let form: FormData
   try {
     form = await request.formData()
   } catch {
     return NextResponse.json({ error: 'Não foi possível ler o envio. Os arquivos podem estar grandes demais.' }, { status: 400 })
+  }
+
+  // Igreja pelo host (subdomínio/domínio próprio) ou, nas rotas /s/<slug>/cadastro, pelo slug.
+  // Os dois são públicos; o que protege é exigir módulo igreja + formulário aberto.
+  const host = request.headers.get('host') || ''
+  const org = (await resolveOrgFromHost(host))?.org ?? await getOrgBySlug(String(form.get('slug') ?? ''))
+  if (!org || !orgTemModulo(org, 'igreja')) {
+    return NextResponse.json({ error: 'Igreja não encontrada.' }, { status: 404 })
+  }
+
+  const config = await getMembresiaConfig(org.id)
+  if (!config.formulario_aberto) {
+    return NextResponse.json({ error: 'O cadastro está fechado no momento.' }, { status: 403 })
   }
 
   // Honeypot: campo invisível que só robôs preenchem — finge sucesso sem gravar

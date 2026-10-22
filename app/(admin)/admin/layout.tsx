@@ -51,8 +51,10 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     const headersList = await headers()
     const host = headersList.get('host') || 'localhost'
     const tenantResult = await resolveOrgFromHost(host)
-    const siteConfig = tenantResult ? await getSiteConfig(tenantResult.org.id) : null
-    orgName = siteConfig?.hero_titulo || tenantResult?.org.nome || 'Ostrick Social'
+    // Sem tenant no host (ex.: *.vercel.app), a marca vem da org do usuário logado
+    const orgDaMarca = tenantResult?.org ?? currentOrg
+    const siteConfig = orgDaMarca ? await getSiteConfig(orgDaMarca.id) : null
+    orgName = siteConfig?.hero_titulo || orgDaMarca?.nome || 'Ostrick Social'
     logoUrl = siteConfig?.logo_url || null
     colors = coresDoSite(siteConfig)
   }

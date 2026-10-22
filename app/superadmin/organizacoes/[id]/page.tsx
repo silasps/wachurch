@@ -34,7 +34,7 @@ export default async function OrgDetailPage({
   const linksPublicos = [
     { label: 'Página pública', href: `/s/${org.slug}` },
     { label: 'Subdomínio', href: subdominio },
-    ...(orgTemModulo(org as Organization, 'igreja') ? [{ label: 'Cadastro de membros', href: `${subdominio}/cadastro` }] : []),
+    ...(orgTemModulo(org as Organization, 'igreja') ? [{ label: 'Cadastro de membros', href: `/s/${org.slug}/cadastro` }] : []),
   ]
 
   const adminCount = profiles?.filter(p => p.role === 'admin' || p.role === 'funcionario').length ?? 0

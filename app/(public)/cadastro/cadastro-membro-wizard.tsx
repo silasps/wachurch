@@ -95,9 +95,11 @@ interface Props {
   orgSlug: string
   primaryColor: string
   config: MembresiaConfigPublica
+  /** Prefixo dos links internos: '' (host do tenant) ou '/s/<slug>' */
+  basePath?: string
 }
 
-export default function CadastroMembroWizard({ igreja, orgSlug, primaryColor, config }: Props) {
+export default function CadastroMembroWizard({ igreja, orgSlug, primaryColor, config, basePath = '' }: Props) {
   const [dados, setDados] = useState<Dados>(VAZIO)
   const [etapa, setEtapa] = useState<Etapa>('inicio')
   const [erros, setErros] = useState<Record<string, string>>({})
@@ -310,6 +312,8 @@ export default function CadastroMembroWizard({ igreja, orgSlug, primaryColor, co
     fd.append('consentimento', String(dados.consentimento))
     fd.append('aceita_comunicacoes', String(dados.comunicacoes))
     fd.append('website', honeypot)
+    // Fora do host do tenant (/s/<slug>/cadastro) a API identifica a igreja pelo slug
+    fd.append('slug', orgSlug)
     if (foto) fd.append('foto', new File([foto], foto.type === 'image/webp' ? 'foto.webp' : 'foto.jpg', { type: foto.type || 'image/jpeg' }))
     if (queroSer && dados.forma === 'transferencia' && carta && !dados.entrega_presencial) fd.append('carta', carta)
 
@@ -367,7 +371,7 @@ export default function CadastroMembroWizard({ igreja, orgSlug, primaryColor, co
             </p>
           ))}
         </div>
-        <Link href="/" className="inline-block w-full py-4 text-lg font-semibold text-white rounded-2xl" style={{ backgroundColor: primaryColor }}>
+        <Link href={basePath || '/'} className="inline-block w-full py-4 text-lg font-semibold text-white rounded-2xl" style={{ backgroundColor: primaryColor }}>
           Voltar ao site
         </Link>
       </div>
@@ -435,7 +439,7 @@ export default function CadastroMembroWizard({ igreja, orgSlug, primaryColor, co
               <ShieldCheck size={18} className="shrink-0 mt-0.5 text-green-600" />
               <span>
                 Seus dados são protegidos pela Lei Geral de Proteção de Dados (LGPD) e usados só pela secretaria da igreja.{' '}
-                <a href="/privacidade" target="_blank" rel="noopener" className="underline">Saiba mais</a>
+                <a href={`${basePath}/privacidade`} target="_blank" rel="noopener" className="underline">Saiba mais</a>
               </span>
             </p>
           </div>

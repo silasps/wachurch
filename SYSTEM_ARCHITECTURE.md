@@ -138,7 +138,7 @@ Duas funções auxiliares `SECURITY DEFINER` usadas em **todas** as policies:
 
 Convenção: `superadmin` sempre tem bypass explícito (`OR public.get_my_role() = 'superadmin'`) nas policies de SELECT. Tabelas legadas com escrita pública anônima (candidatura a voluntário, solicitação de admissão) têm policy de INSERT com `WITH CHECK (true)` — dados sensíveis dessas tabelas nunca devem ser expostos em SELECT anônimo.
 
-**Padrão para formulários públicos novos (obrigatório):** a rota `app/api/public/**` resolve a org **pelo host** (`resolveOrgFromHost(request.headers.get('host'))`) — **nunca** aceita `org_id` vindo do navegador —, valida tudo no servidor e grava com `createServiceClient()`. Assim a tabela não precisa de policy anônima. Referência: `app/api/public/membros/route.ts` (também com honeypot `website` e resposta idêntica para CPF repetido). `app/api/public/solicitacoes` já segue a resolução por host.
+**Padrão para formulários públicos novos (obrigatório):** a rota `app/api/public/**` resolve a org **pelo host** (`resolveOrgFromHost(request.headers.get('host'))`) — **nunca** aceita `org_id` vindo do navegador —, valida tudo no servidor e grava com `createServiceClient()`. Assim a tabela não precisa de policy anônima. Exceção: rotas por caminho `/s/<slug>/…` enviam o `slug` no corpo quando o host não identifica o tenant (host e slug são igualmente públicos — a proteção é exigir o módulo e o formulário aberto). Referência: `app/api/public/membros/route.ts` (também com honeypot `website` e resposta idêntica para CPF repetido). `app/api/public/solicitacoes` já segue a resolução por host.
 
 Funções de módulo: `public.org_tem_modulo(p_modulo)` → true se a org do usuário tem o módulo na licença (usar nas policies das tabelas de módulo).
 
@@ -168,7 +168,7 @@ app/
   (public)/                     — route group: site institucional multi-tenant + marketing
     page.tsx                    — landing (renderiza conforme tenant resolvido)
     faca-parte/                 — formulário público de candidatura
-    cadastro/                   — cadastro público de membros (módulo igreja) — wizard passo a passo
+    cadastro/                   — cadastro público de membros (módulo igreja) — wizard passo a passo (view em cadastro-view.tsx)
     privacidade/                — aviso de privacidade LGPD da igreja
     _components/                — landing-page.tsx (marketing), tenant-header.tsx (cabeçalho das páginas do tenant)
     termos/[token]/             — assinatura digital de termo (aluno)
@@ -182,7 +182,8 @@ app/
     turmas/[id]/{chamada,materiais,atividades}/, financeiro/, comunicados/
   superadmin/                   — painel da plataforma (sem route group — prefixo direto)
     organizacoes/, usuarios/, melhorias/, configuracoes/
-  s/[slug]/                     — visualização alternativa do site público por slug (preview?)
+  s/[slug]/                     — site público por slug, em qualquer host (perfil da igreja ou site antigo)
+    cadastro/, privacidade/     — mesmas telas de (public)/cadastro e /privacidade, por caminho — funcionam sem DNS curinga (ex.: *.vercel.app)
   acesso-negado/                — página de erro 403
   api/
     admin/...                   — rotas de mutação usadas pelos painéis admin (usuarios, alunos, turmas, financeiro, site, solicitacoes, membros, membresia-config)
@@ -191,7 +192,7 @@ app/
     superadmin/...               — organizacoes, impersonate, melhorias
     auth/signout/
     public/solicitacoes/         — endpoint público (anon) de candidatura (org resolvida pelo host)
-    public/membros/              — cadastro público de membros (multipart, org pelo host, service client)
+    public/membros/              — cadastro público de membros (multipart, org pelo host ou, nas rotas /s/<slug>/cadastro, pelo campo `slug`; service client)
     melhorias/                   — feedback in-app (FAB)
 
 components/

@@ -97,3 +97,14 @@ export function urlPublicaOrg(slug: string, host: string): string {
   }
   return `https://${slug}.ostricksocial.com.br`
 }
+
+// Org ativa pelo slug (rotas /s/[slug]/… — funcionam em qualquer host, sem DNS curinga)
+export async function getOrgBySlug(slug: string): Promise<Organization | null> {
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    { cookies: { getAll: () => [], setAll: () => {} } }
+  )
+  const { data } = await supabase.from('organizations').select('*').eq('slug', slug).eq('ativo', true).maybeSingle()
+  return (data as Organization | null) ?? null
+}
