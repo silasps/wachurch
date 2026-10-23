@@ -57,7 +57,8 @@ export async function POST(request: Request) {
 
   const foto = form.get('foto')
   const fotoFile = foto instanceof File && foto.size > 0 ? foto : null
-  if (fotoFile && (!FOTO_MIME.includes(fotoFile.type) || fotoFile.size > FOTO_MAX_BYTES)) {
+  if (!fotoFile) erros.foto = 'Envie uma foto.'
+  else if (!FOTO_MIME.includes(fotoFile.type) || fotoFile.size > FOTO_MAX_BYTES) {
     erros.foto = 'A foto precisa ser uma imagem de até 2 MB.'
   }
 

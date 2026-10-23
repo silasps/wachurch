@@ -259,6 +259,7 @@ Referência: `app/(public)/cadastro/cadastro-membro-wizard.tsx`.
 - Fonte ≥16px nos campos (`text-lg`, evita zoom do iOS), campos altos (`py-3.5`), botões grandes (`py-4 text-lg`), rótulo sempre visível acima do campo (nunca só placeholder), linguagem simples e ajuda curta abaixo do rótulo.
 - Datas digitadas como DD/MM/AAAA com máscara e teclado numérico (não usar `<input type="date">` no público). CPF/telefone/CEP com máscara (`lib/mascaras.ts`) e `inputMode` adequado; CEP preenche o endereço.
 - Escolhas como cartões/botões grandes, não `<select>`. Foto com "Tirar foto" e "Galeria".
+- Cadastro de membros: **foto obrigatória** (validada também na API). O sexo é perguntado antes da foto para mostrar a foto de exemplo correspondente (`public/exemplos/foto-exemplo-{feminina,masculina}.webp`) com as orientações (luz, fundo, enquadramento).
 - Cor da org via CSS var `--cor` (`focus:border-[var(--cor)]`).
 - Rascunho em `sessionStorage` (com try/catch, expira em 2h, sem consentimento/arquivos) — não usar `localStorage` porque o formulário pode estar num tablet compartilhado na igreja.
 - Consentimento LGPD: checkbox desmarcado, destacado, com resumo + "Ler o texto completo"; finalidades distintas em checkboxes separados.

@@ -177,7 +177,10 @@ export default function CadastroMembroWizard({ igreja, orgSlug, primaryColor, co
   function onFoto(blob: Blob | null) {
     setFoto(blob)
     setFotoUrl(blob ? URL.createObjectURL(blob) : null)
-    if (blob) setArquivosPerdidos(a => ({ ...a, foto: false }))
+    if (blob) {
+      setArquivosPerdidos(a => ({ ...a, foto: false }))
+      setErros(e => ({ ...e, foto: '' }))
+    }
   }
 
   async function onCep(valor: string) {
@@ -218,11 +221,12 @@ export default function CadastroMembroWizard({ igreja, orgSlug, primaryColor, co
       if (perguntaCurso && !dados.curso) r.curso = 'Responda sim ou não.'
     }
     if (e === 'dados') {
+      if (!dados.sexo) r.sexo = 'Escolha uma opção.'
+      if (!foto) r.foto = 'Envie uma foto para continuar. Pode tirar agora pela câmera.'
       const nome = dados.nome.trim()
       if (nome.length < 3 || !nome.includes(' ')) r.nome = 'Escreva o nome completo (nome e sobrenome).'
       if (!isValidCpf(dados.cpf)) r.cpf = soDigitos(dados.cpf).length < 11 ? 'Digite os 11 números do CPF.' : 'CPF inválido. Confira os números.'
       if (!nascimentoIso || idade === null || idade < 0 || idade > 120) r.nascimento = 'Digite a data no formato dia/mês/ano. Ex.: 25/03/1965'
-      if (!dados.sexo) r.sexo = 'Escolha uma opção.'
       if (menor) {
         if (!dados.responsavel_nome.trim()) r.responsavel_nome = 'Informe o nome do responsável.'
         if (!isValidPhone(dados.responsavel_celular)) r.responsavel_celular = 'Informe o celular com DDD.'
@@ -245,7 +249,11 @@ export default function CadastroMembroWizard({ igreja, orgSlug, primaryColor, co
     const r = validar(etapa)
     setErros(r)
     if (Object.keys(r).length) {
-      requestAnimationFrame(() => document.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus())
+      requestAnimationFrame(() => {
+        // Ordem da tela: sexo e foto vêm antes dos campos de texto
+        if (r.sexo || r.foto) document.getElementById(r.sexo ? 'sexo' : 'foto')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        else document.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus()
+      })
       return
     }
     if (etapa === 'ingresso' && dados.forma === 'aclamacao' && !dados.igreja_origem.trim() && !avisoSemIgreja) {
@@ -539,10 +547,25 @@ export default function CadastroMembroWizard({ igreja, orgSlug, primaryColor, co
         {/* ── Dados pessoais ── */}
         {etapa === 'dados' && (
           <div className="mt-4 space-y-5">
-            <div>
+            <div id="sexo" className="scroll-mt-4">
+              <p className="text-base font-semibold text-gray-800 mb-2">Sexo</p>
+              <Escolha
+                opcoes={Object.entries(SEXO_LABELS).map(([value, label]) => ({ value, label }))}
+                valor={dados.sexo}
+                onChange={v => set('sexo', v as MembroSexo)}
+                cor={primaryColor}
+                erro={erros.sexo}
+              />
+              <Erro msg={erros.sexo} />
+            </div>
+
+            {/* Foto obrigatória, com exemplo (conforme o sexo) e orientações */}
+            <div id="foto" className={`p-4 rounded-2xl border-2 scroll-mt-4 ${erros.foto ? 'border-red-400 bg-red-50' : 'border-gray-200'}`}>
               <p className="text-base font-semibold text-gray-800 text-center mb-1">Sua foto</p>
-              <p className="text-sm text-gray-500 text-center mb-3">Opcional, mas ajuda a secretaria a reconhecer você.</p>
+              <p className="text-sm text-gray-500 text-center mb-4">Ela ajuda a secretaria a reconhecer você.</p>
+              {!foto && <ExemploFoto sexo={dados.sexo} />}
               <PhotoPicker previewUrl={fotoUrl} onChange={onFoto} primaryColor={primaryColor} grande />
+              <Erro msg={erros.foto} />
             </div>
 
             <Campo id="nome" label="Nome completo" erro={erros.nome}>
@@ -562,18 +585,6 @@ export default function CadastroMembroWizard({ igreja, orgSlug, primaryColor, co
                 inputMode="numeric" placeholder="dd/mm/aaaa" maxLength={10} autoComplete="bday"
               />
             </Campo>
-
-            <div>
-              <p className="text-base font-semibold text-gray-800 mb-2">Sexo</p>
-              <Escolha
-                opcoes={Object.entries(SEXO_LABELS).map(([value, label]) => ({ value, label }))}
-                valor={dados.sexo}
-                onChange={v => set('sexo', v as MembroSexo)}
-                cor={primaryColor}
-                erro={erros.sexo}
-              />
-              <Erro msg={erros.sexo} />
-            </div>
 
             <div>
               <p className="text-base font-semibold text-gray-800 mb-2">Estado civil <span className="font-normal text-gray-500">(opcional)</span></p>
@@ -838,6 +849,39 @@ export default function CadastroMembroWizard({ igreja, orgSlug, primaryColor, co
           )}
         </div>
       </div>
+    </div>
+  )
+}
+
+// Foto de exemplo (feminina/masculina conforme o sexo escolhido; as duas se ainda não escolheu) + orientações
+const DICAS_FOTO = [
+  'Rosto de frente, olhando para a câmera',
+  'Lugar bem iluminado, de preferência com luz natural',
+  'Fundo liso, sem outras pessoas',
+  'Sem óculos escuros, boné ou chapéu',
+  'Dos ombros para cima, sem filtros',
+]
+
+function ExemploFoto({ sexo }: { sexo: '' | MembroSexo }) {
+  const exemplos = [
+    { sexo: 'feminino', src: '/exemplos/foto-exemplo-feminina.webp' },
+    { sexo: 'masculino', src: '/exemplos/foto-exemplo-masculina.webp' },
+  ].filter(e => !sexo || e.sexo === sexo)
+  return (
+    <div className="mb-5 flex flex-col sm:flex-row items-center gap-4 p-3 bg-gray-50 rounded-xl">
+      <div className="flex gap-2 shrink-0">
+        {exemplos.map(e => (
+          <div key={e.sexo} className="relative">
+            <img src={e.src} alt="Exemplo de foto" width={96} height={96} className="w-24 h-24 rounded-xl object-cover" />
+            <span className="absolute bottom-1 left-1 px-1.5 py-0.5 rounded bg-black/60 text-white text-[10px] font-semibold">Exemplo</span>
+          </div>
+        ))}
+      </div>
+      <ul className="space-y-1 text-sm text-gray-700">
+        {DICAS_FOTO.map(d => (
+          <li key={d} className="flex gap-2"><Check size={16} className="shrink-0 mt-0.5 text-green-600" />{d}</li>
+        ))}
+      </ul>
     </div>
   )
 }
