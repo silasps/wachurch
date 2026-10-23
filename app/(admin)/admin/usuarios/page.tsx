@@ -1,18 +1,30 @@
 import { requireRole } from '@/lib/auth'
-import { createClient } from '@/lib/supabase-server'
+import { getCurrentOrg } from '@/lib/org'
+import { createServiceClient } from '@/lib/supabase-server'
+import { modulosDaOrg } from '@/lib/modulos'
 import type { Profile } from '@/types'
 import UsuariosList from './usuarios-list'
 
 export default async function UsuariosPage() {
   const { profile } = await requireRole(['admin', 'superadmin'])
-  const supabase = await createClient()
+  const org = await getCurrentOrg(profile)
+  // Service client: a org efetiva pode ser a impersonada pelo superadmin (filtro por org_id explícito)
+  const supabase = await createServiceClient()
 
-  const { data: usuarios } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('org_id', profile.org_id)
-    .in('role', ['admin', 'funcionario', 'professor'])
-    .order('nome')
+  const { data: usuarios } = org
+    ? await supabase
+        .from('profiles')
+        .select('*')
+        .eq('org_id', org.id)
+        .in('role', ['admin', 'funcionario', 'professor'])
+        .order('nome')
+    : { data: [] }
 
-  return <UsuariosList usuarios={(usuarios ?? []) as Profile[]} />
+  return (
+    <UsuariosList
+      usuarios={(usuarios ?? []) as Profile[]}
+      modulosOrg={modulosDaOrg(org)}
+      meuId={profile.id}
+    />
+  )
 }

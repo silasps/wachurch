@@ -1,13 +1,14 @@
 import { createServiceClient } from '@/lib/supabase-server'
 import { formatDate } from '@/lib/utils'
 import type { Profile, Organization } from '@/types'
+import { AREA_LABELS, areasDoUsuario, modulosDaOrg } from '@/lib/modulos'
 
 export default async function UsuariosPage() {
   const supabase = await createServiceClient()
 
   const { data: profiles } = await supabase
     .from('profiles')
-    .select('*, organizations(nome, slug)')
+    .select('*, organizations(nome, slug, modulos)')
     .order('created_at', { ascending: false })
 
   return (
@@ -24,12 +25,13 @@ export default async function UsuariosPage() {
               <th className="px-5 py-4 text-left font-medium">Usuário</th>
               <th className="px-5 py-4 text-left font-medium">Organização</th>
               <th className="px-5 py-4 text-left font-medium">Role</th>
+              <th className="px-5 py-4 text-left font-medium">Áreas</th>
               <th className="px-5 py-4 text-left font-medium">Status</th>
               <th className="px-5 py-4 text-left font-medium">Cadastrado em</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-white/5">
-            {profiles?.map((p: Profile & { organizations: Pick<Organization, 'nome' | 'slug'> | null }) => (
+            {profiles?.map((p: Profile & { organizations: Pick<Organization, 'nome' | 'slug' | 'modulos'> | null }) => (
               <tr key={p.id} className="hover:bg-white/5 transition">
                 <td className="px-5 py-3">
                   <p className="font-medium text-white">{p.nome}</p>
@@ -48,6 +50,16 @@ export default async function UsuariosPage() {
                     p.role === 'admin' ? 'bg-blue-500/20 text-blue-400' :
                     'bg-white/10 text-gray-300'
                   }`}>{p.role}</span>
+                </td>
+                <td className="px-5 py-3">
+                  {p.organizations ? (() => {
+                    // Igreja / Projeto Social / as duas — licença da org ∩ áreas do usuário
+                    const areas = areasDoUsuario(p, p.organizations)
+                    const texto = areas.length > 1 && areas.length === modulosDaOrg(p.organizations).length
+                      ? 'Igreja + Projeto Social'
+                      : areas.map(a => AREA_LABELS[a]).join(', ') || '—'
+                    return <span className="px-2 py-0.5 rounded-full text-xs bg-amber-500/15 text-amber-300 whitespace-nowrap">{texto}</span>
+                  })() : <span className="text-xs text-gray-600">—</span>}
                 </td>
                 <td className="px-5 py-3">
                   <span className={`text-xs ${p.ativo ? 'text-emerald-400' : 'text-red-400'}`}>

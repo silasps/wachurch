@@ -5,7 +5,7 @@ import { createHash } from 'crypto'
 import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase-server'
 import { getApiContext } from '@/lib/org'
-import { orgTemModulo } from '@/lib/modulos'
+import { areasDoUsuario } from '@/lib/modulos'
 import { CONTENT_TYPE_WEBP, ehImagemRaster, paraWebp } from '@/lib/imagem-server'
 import {
   BUCKET_MEMBROS, MEMBRESIA_CONFIG_PADRAO, type MembresiaConfigPublica,
@@ -23,7 +23,7 @@ export async function autorizarMembros(
   if (!ctx || !permissao(ctx.profile.role)) {
     return { ok: false, res: NextResponse.json({ error: 'Não autorizado' }, { status: 403 }) }
   }
-  if (!ctx.org || !orgTemModulo(ctx.org, 'igreja')) {
+  if (!ctx.org || !areasDoUsuario(ctx.profile, ctx.org).includes('igreja')) {
     return { ok: false, res: NextResponse.json({ error: 'Módulo Igreja não está disponível nesta licença' }, { status: 403 }) }
   }
   return { ok: true, profile: ctx.profile, org: ctx.org }

@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { requireRole } from '@/lib/auth'
 import { createClient, createServiceClient } from '@/lib/supabase-server'
 import { canVerFinanceiro, canVerMembros } from '@/lib/rbac'
-import { getCurrentOrg } from '@/lib/org'
+import { getAreaAtiva, getCurrentOrg } from '@/lib/org'
 import { nomeDoTipo, orgTemModulo } from '@/lib/modulos'
 
 function formatBRL(centavos: number) {
@@ -15,8 +15,12 @@ export default async function AdminDashboardPage() {
   const orgId = profile.org_id
   const verFinanceiro = canVerFinanceiro(profile.role)
   const org = await getCurrentOrg(profile)
-  const temSocial = orgTemModulo(org, 'social')
-  const temIgreja = orgTemModulo(org, 'igreja') && canVerMembros(profile.role)
+  // Mostra os cartões da área escolhida no seletor (Igreja | Projeto Social)
+  const areaAtiva = await getAreaAtiva(profile, org)
+  const temSocial = areaAtiva === 'social'
+  const temIgreja = areaAtiva === 'igreja' && canVerMembros(profile.role)
+  // Financeiro pertence ao Projeto Social; em contas sem esse módulo aparece sempre
+  const mostrarFinanceiro = verFinanceiro && (temSocial || !orgTemModulo(org, 'social'))
 
   const now = new Date()
   const mesInicio = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`
@@ -66,7 +70,7 @@ export default async function AdminDashboardPage() {
     <div className="p-4 sm:p-6 lg:p-8">
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-        <p className="text-gray-500 text-sm mt-1">Visão geral da {nomeDoTipo(org?.tipo)}</p>
+        <p className="text-gray-500 text-sm mt-1">Visão geral {areaAtiva === 'social' && org?.tipo === 'igreja' ? 'do projeto social' : `da ${nomeDoTipo(org?.tipo)}`}</p>
       </div>
 
       {temIgreja && (
@@ -87,7 +91,7 @@ export default async function AdminDashboardPage() {
       )}
 
       {/* Card financeiro */}
-      {verFinanceiro && (
+      {mostrarFinanceiro && (
         <div className="mb-8">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-sm font-semibold text-gray-700">Financeiro — {mesLabel}</h2>

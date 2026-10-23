@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation'
 import { Plus, UserPlus } from 'lucide-react'
 import { Modal } from '@/components/ui/modal'
 import { formatDate, getInitials } from '@/lib/utils'
-import type { Profile, UserRole } from '@/types'
+import { AREA_LABELS } from '@/lib/modulos'
+import type { Modulo, Profile, UserRole } from '@/types'
 import UsuarioForm from './usuario-form'
 
 const ROLE_LABELS: Record<UserRole, string> = {
@@ -26,12 +27,26 @@ const ROLE_COLORS: Record<string, string> = {
   superadmin:  'bg-red-100 text-red-700',
 }
 
-export default function UsuariosList({ usuarios }: { usuarios: Profile[] }) {
+// Áreas efetivas do usuário (null = todas as da licença)
+function areasDe(u: Profile, modulosOrg: Modulo[]): Modulo[] {
+  return u.areas ? modulosOrg.filter(m => u.areas!.includes(m)) : modulosOrg
+}
+
+function AreasBadge({ u, modulosOrg }: { u: Profile; modulosOrg: Modulo[] }) {
+  if (modulosOrg.length < 2) return null
+  const areas = areasDe(u, modulosOrg)
+  const texto = areas.length === modulosOrg.length ? 'Igreja + Projeto Social' : areas.map(a => AREA_LABELS[a]).join(', ')
+  return <span className="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-800">{texto}</span>
+}
+
+export default function UsuariosList({ usuarios, modulosOrg, meuId }: { usuarios: Profile[]; modulosOrg: Modulo[]; meuId: string }) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
+  const [editando, setEditando] = useState<Profile | null>(null)
 
   function handleSuccess() {
     setOpen(false)
+    setEditando(null)
     router.refresh()
   }
 
@@ -64,13 +79,14 @@ export default function UsuariosList({ usuarios }: { usuarios: Profile[] }) {
           {/* Mobile: cards */}
           <div className="sm:hidden space-y-2">
             {usuarios.map((u: Profile) => (
-              <div key={u.id} className="bg-white rounded-xl border border-gray-200 p-4 flex items-center gap-3">
+              <button key={u.id} onClick={() => setEditando(u)} className="w-full text-left bg-white rounded-xl border border-gray-200 p-4 flex items-center gap-3 active:bg-gray-50">
                 <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-sm font-semibold text-gray-600 shrink-0">
                   {getInitials(u.nome)}
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-gray-900 truncate">{u.nome}</p>
                   <p className="text-xs text-gray-400 truncate">{u.email}</p>
+                  <div className="mt-1"><AreasBadge u={u} modulosOrg={modulosOrg} /></div>
                 </div>
                 <div className="flex flex-col items-end gap-1.5 shrink-0">
                   <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${ROLE_COLORS[u.role]}`}>
@@ -81,7 +97,7 @@ export default function UsuariosList({ usuarios }: { usuarios: Profile[] }) {
                     {u.ativo ? 'Ativo' : 'Inativo'}
                   </span>
                 </div>
-              </div>
+              </button>
             ))}
           </div>
 
@@ -92,6 +108,7 @@ export default function UsuariosList({ usuarios }: { usuarios: Profile[] }) {
                 <tr>
                   <th className="px-6 py-3.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Nome</th>
                   <th className="px-6 py-3.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Função</th>
+                  {modulosOrg.length > 1 && <th className="px-6 py-3.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Áreas</th>}
                   <th className="px-6 py-3.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Telefone</th>
                   <th className="px-6 py-3.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Cadastrado em</th>
                   <th className="px-6 py-3.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Status</th>
@@ -99,7 +116,7 @@ export default function UsuariosList({ usuarios }: { usuarios: Profile[] }) {
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {usuarios.map((u: Profile) => (
-                  <tr key={u.id} className="hover:bg-gray-50 transition">
+                  <tr key={u.id} onClick={() => setEditando(u)} className="hover:bg-gray-50 transition cursor-pointer">
                     <td className="px-6 py-4">
                       <p className="font-medium text-gray-900">{u.nome}</p>
                       <p className="text-xs text-gray-400">{u.email}</p>
@@ -109,6 +126,7 @@ export default function UsuariosList({ usuarios }: { usuarios: Profile[] }) {
                         {ROLE_LABELS[u.role]}
                       </span>
                     </td>
+                    {modulosOrg.length > 1 && <td className="px-6 py-4"><AreasBadge u={u} modulosOrg={modulosOrg} /></td>}
                     <td className="px-6 py-4 text-gray-500">{u.telefone || '—'}</td>
                     <td className="px-6 py-4 text-gray-400 text-xs">{formatDate(u.created_at)}</td>
                     <td className="px-6 py-4">
@@ -131,7 +149,25 @@ export default function UsuariosList({ usuarios }: { usuarios: Profile[] }) {
         title="Novo usuário"
         description="Adicione um professor, funcionário ou administrador à organização."
       >
-        <UsuarioForm onSuccess={handleSuccess} onCancel={() => setOpen(false)} />
+        <UsuarioForm modulosOrg={modulosOrg} onSuccess={handleSuccess} onCancel={() => setOpen(false)} />
+      </Modal>
+
+      <Modal
+        open={!!editando}
+        onClose={() => setEditando(null)}
+        title="Editar acesso"
+        description={editando ? `${editando.nome} · ${editando.email}` : undefined}
+      >
+        {editando && (
+          <UsuarioForm
+            key={editando.id}
+            inicial={editando}
+            modulosOrg={modulosOrg}
+            ehVoceMesmo={editando.id === meuId}
+            onSuccess={handleSuccess}
+            onCancel={() => setEditando(null)}
+          />
+        )}
       </Modal>
     </div>
   )

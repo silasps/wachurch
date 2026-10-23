@@ -59,6 +59,8 @@ export interface Profile {
   email: string
   telefone: string | null
   role: UserRole
+  /** Áreas que o usuário acessa (null = todas as da licença da org) */
+  areas: Modulo[] | null
   ativo: boolean
   avatar_url: string | null
   created_at: string
@@ -417,6 +419,7 @@ export interface Membro {
   responsavel_nome: string | null
   responsavel_celular: string | null
   possivel_duplicado_de: string | null
+  profile_id: string | null
   aceita_comunicacoes: boolean
   observacoes_internas: string | null
   aprovado_por: string | null

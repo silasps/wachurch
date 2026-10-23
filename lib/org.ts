@@ -3,7 +3,7 @@ import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { getSession } from '@/lib/auth'
 import { createServiceClient } from '@/lib/supabase-server'
-import { orgTemModulo } from '@/lib/modulos'
+import { areasDoUsuario, COOKIE_AREA } from '@/lib/modulos'
 import type { Modulo, Organization, Profile } from '@/types'
 
 // org_id "efetivo" do usuário: o do perfil, ou o da org que o superadmin está impersonando
@@ -30,8 +30,15 @@ export async function getCurrentOrg(profile: Profile): Promise<Organization | nu
 // Para páginas: redireciona ao dashboard se o módulo não estiver na licença da org
 export async function requireModulo(profile: Profile, modulo: Modulo): Promise<Organization> {
   const org = await getCurrentOrg(profile)
-  if (!org || !orgTemModulo(org, modulo)) redirect('/admin')
+  if (!org || !areasDoUsuario(profile, org).includes(modulo)) redirect('/admin')
   return org
+}
+
+// Área ativa no painel: a escolhida no seletor (cookie), se permitida; senão a primeira disponível
+export async function getAreaAtiva(profile: Profile, org: Organization | null): Promise<Modulo | null> {
+  const areas = areasDoUsuario(profile, org)
+  const escolhida = (await cookies()).get(COOKIE_AREA)?.value as Modulo | undefined
+  return escolhida && areas.includes(escolhida) ? escolhida : areas[0] ?? null
 }
 
 // Para rotas de API: sessão + org efetiva (null quando não autenticado)
@@ -44,5 +51,5 @@ export async function getApiContext(): Promise<{ profile: Profile; org: Organiza
 
 // Para rotas de API: true se a org efetiva do usuário tem o módulo licenciado
 export async function temModulo(profile: Profile, modulo: Modulo): Promise<boolean> {
-  return orgTemModulo(await getCurrentOrg(profile), modulo)
+  return areasDoUsuario(profile, await getCurrentOrg(profile)).includes(modulo)
 }

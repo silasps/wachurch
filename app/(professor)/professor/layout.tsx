@@ -2,7 +2,7 @@ import { requireRole } from '@/lib/auth'
 import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { getCurrentOrg } from '@/lib/org'
-import { orgTemModulo } from '@/lib/modulos'
+import { areasDoUsuario } from '@/lib/modulos'
 import { resolveOrgFromHost, getSiteConfig } from '@/lib/tenant'
 import ProfessorSidebar from './professor-sidebar'
 import { coresDoSite } from '@/lib/cores'
@@ -12,7 +12,7 @@ export default async function ProfessorLayout({ children }: { children: React.Re
 
   // Painel do professor pertence ao módulo Projeto Social
   const currentOrg = await getCurrentOrg(profile)
-  if (currentOrg && !orgTemModulo(currentOrg, 'social')) redirect('/acesso-negado')
+  if (currentOrg && !areasDoUsuario(profile, currentOrg).includes('social')) redirect('/acesso-negado')
 
   const headersList = await headers()
   const host = headersList.get('host') || 'localhost'

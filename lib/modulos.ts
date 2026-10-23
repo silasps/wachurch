@@ -1,4 +1,4 @@
-import type { Modulo, Organization, OrgTipo } from '@/types'
+import type { Modulo, Organization, OrgTipo, Profile } from '@/types'
 
 // Módulos que uma licença pode liberar.
 // Comum a todas as contas (sem módulo): dashboard, usuários, financeiro, site, configurações.
@@ -54,3 +54,19 @@ export function orgTemModulo(org: Pick<Organization, 'modulos'> | null | undefin
 export function nomeDoTipo(tipo: OrgTipo | null | undefined): string {
   return tipo === 'igreja' ? 'igreja' : 'organização'
 }
+
+// Áreas que o usuário acessa nesta org: módulos da licença ∩ profile.areas (null = todas).
+// Superadmin (inclusive simulando acesso) vê todas as áreas da org.
+export function areasDoUsuario(
+  profile: Pick<Profile, 'role' | 'areas'>,
+  org: Pick<Organization, 'modulos'> | null | undefined,
+): Modulo[] {
+  const daOrg = modulosDaOrg(org)
+  if (profile.role === 'superadmin' || !profile.areas) return daOrg
+  return daOrg.filter(m => profile.areas!.includes(m))
+}
+
+export const AREA_LABELS: Record<Modulo, string> = { igreja: 'Igreja', social: 'Projeto Social' }
+
+// Cookie com a área escolhida no seletor do painel (quando o usuário acessa as duas)
+export const COOKIE_AREA = 'os_area'

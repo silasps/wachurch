@@ -7,8 +7,9 @@ import ImpersonationBanner from '@/components/superadmin/impersonation-banner'
 import { RolePreviewBanner } from '@/components/admin/role-preview-banner'
 import { RolePreviewDropdown } from '@/components/admin/role-preview-dropdown'
 import { MelhoriaFab } from '@/components/melhoria-fab'
-import { getCurrentOrg } from '@/lib/org'
-import { modulosDaOrg } from '@/lib/modulos'
+import { getAreaAtiva, getCurrentOrg } from '@/lib/org'
+import { areasDoUsuario, modulosDaOrg } from '@/lib/modulos'
+import { AreaSwitcher } from '@/components/admin/area-switcher'
 import type { UserRole } from '@/types'
 import { coresDoSite } from '@/lib/cores'
 
@@ -30,7 +31,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   // Módulos da licença da org efetiva (a do perfil ou a impersonada)
   const currentOrg = await getCurrentOrg(profile)
-  const modulos = modulosDaOrg(currentOrg)
+  const modulosOrg = modulosDaOrg(currentOrg)
+  const areas = areasDoUsuario(profile, currentOrg)
+  const areaAtiva = await getAreaAtiva(profile, currentOrg)
 
   let orgName = 'Ostrick Social'
   let logoUrl: string | null = null
@@ -102,9 +105,17 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           userNome={profile.nome}
           userRole={profile.role}
           effectiveRole={effectiveRole}
-          modulos={modulos}
+          modulosOrg={modulosOrg}
+          areas={areas}
+          areaAtiva={areaAtiva}
         />
         <main className={`flex-1 overflow-auto pb-16 lg:pb-0 min-w-0 ${bannerPt}`}>
+          {/* Celular: seletor de área no topo do conteúdo */}
+          {areas.length > 1 && (
+            <div className="lg:hidden px-4 pt-4">
+              <AreaSwitcher areas={areas} areaAtiva={areaAtiva} primaryColor={colors.primary} />
+            </div>
+          )}
           {children}
         </main>
       </div>

@@ -15,7 +15,7 @@ import {
   canVerFinanceiro, canVerMembros,
   ROLE_LABELS,
 } from '@/lib/rbac'
-import { MODULO_LABELS } from '@/lib/modulos'
+import { AreaSwitcher } from '@/components/admin/area-switcher'
 import type { Modulo, UserRole } from '@/types'
 
 interface AdminSidebarProps {
@@ -25,39 +25,36 @@ interface AdminSidebarProps {
   userNome: string
   userRole: UserRole
   effectiveRole: UserRole
-  modulos: Modulo[]
+  /** Módulos da licença da org */
+  modulosOrg: Modulo[]
+  /** Áreas que o usuário acessa (licença ∩ permissões dele) */
+  areas: Modulo[]
+  areaAtiva: Modulo | null
 }
 
-// modulo: item só aparece se a licença da org tiver o módulo (sem modulo = comum a todas)
+// area: item só aparece na área ativa do painel (sem area = comum às duas áreas)
 const NAV_ITEMS: Array<{
   label: string
   href: string
   icon: typeof LayoutDashboard
   can: (role: UserRole) => boolean
-  modulo?: Modulo
+  area?: Modulo
 }> = [
   { label: 'Dashboard',    href: '/admin',               icon: LayoutDashboard, can: canVerDashboard },
-  { label: 'Membros',      href: '/admin/membros',       icon: Church,          can: canVerMembros, modulo: 'igreja' },
+  { label: 'Membros',      href: '/admin/membros',       icon: Church,          can: canVerMembros, area: 'igreja' },
   { label: 'Usuários',     href: '/admin/usuarios',      icon: Users,           can: canGerenciarUsuarios },
-  { label: 'Alunos',       href: '/admin/alunos',        icon: GraduationCap,   can: canVerAlunos, modulo: 'social' },
-  { label: 'Turmas',       href: '/admin/turmas',        icon: BookOpen,        can: canVerTurmas, modulo: 'social' },
+  { label: 'Alunos',       href: '/admin/alunos',        icon: GraduationCap,   can: canVerAlunos, area: 'social' },
+  { label: 'Turmas',       href: '/admin/turmas',        icon: BookOpen,        can: canVerTurmas, area: 'social' },
   { label: 'Financeiro',   href: '/admin/financeiro',    icon: DollarSign,      can: canVerFinanceiro },
-  { label: 'Voluntariado', href: '/admin/voluntariado',  icon: Heart,           can: canGerenciarVoluntariado, modulo: 'social' },
+  { label: 'Voluntariado', href: '/admin/voluntariado',  icon: Heart,           can: canGerenciarVoluntariado, area: 'social' },
   { label: 'Site',         href: '/admin/site',          icon: Globe,           can: canGerenciarSite },
   { label: 'Config',       href: '/admin/configuracoes', icon: Settings,        can: canGerenciarConfiguracoes },
-]
-
-// Ordem dos grupos no menu desktop quando a org tem mais de um módulo
-const GRUPOS: Array<{ key: Modulo | 'geral'; label: string | null }> = [
-  { key: 'igreja', label: MODULO_LABELS.igreja },
-  { key: 'social', label: MODULO_LABELS.social },
-  { key: 'geral',  label: 'Geral' },
 ]
 
 const MAX_PRIMARY = 4
 
 export default function AdminSidebar({
-  orgName, logoUrl, primaryColor, userNome, userRole, effectiveRole, modulos,
+  orgName, logoUrl, primaryColor, userNome, userRole, effectiveRole, modulosOrg, areas, areaAtiva,
 }: AdminSidebarProps) {
   const pathname = usePathname()
   const [maisOpen, setMaisOpen] = useState(false)
@@ -65,24 +62,15 @@ export default function AdminSidebar({
   const isActive = (href: string) =>
     href === '/admin' ? pathname === '/admin' : pathname.startsWith(href)
 
-  const visibleItems = NAV_ITEMS.filter(({ can, modulo }) =>
-    can(effectiveRole) && (!modulo || modulos.includes(modulo))
-  )
+  // Financeiro pertence ao Projeto Social; em contas sem esse módulo continua comum
+  const areaDoItem = (item: (typeof NAV_ITEMS)[number]): Modulo | undefined =>
+    item.href === '/admin/financeiro' ? (modulosOrg.includes('social') ? 'social' : undefined) : item.area
 
-  // Desktop: com os dois módulos, agrupa (Dashboard no topo, depois Igreja / Projeto Social / Geral)
-  const agrupar = modulos.length > 1
-  const desktopSections = agrupar
-    ? [
-        { key: 'topo', label: null as string | null, items: visibleItems.filter(i => i.href === '/admin') },
-        ...GRUPOS.map(g => ({
-          key: g.key,
-          label: g.label,
-          items: visibleItems.filter(i =>
-            i.href !== '/admin' && (g.key === 'geral' ? !i.modulo : i.modulo === g.key)
-          ),
-        })),
-      ].filter(sec => sec.items.length > 0)
-    : [{ key: 'todos', label: null as string | null, items: visibleItems }]
+  const visibleItems = NAV_ITEMS.filter(item => {
+    if (!item.can(effectiveRole)) return false
+    const area = areaDoItem(item)
+    return !area || (areas.includes(area) && area === areaAtiva)
+  })
 
   const showMais = visibleItems.length > MAX_PRIMARY
   const primaryItems = showMais ? visibleItems.slice(0, MAX_PRIMARY) : visibleItems
@@ -106,15 +94,15 @@ export default function AdminSidebar({
           <span className="text-sm font-semibold text-gray-900 truncate">{orgName}</span>
         </div>
 
+        {areas.length > 1 && (
+          <div className="px-3 pt-3">
+            <AreaSwitcher areas={areas} areaAtiva={areaAtiva} primaryColor={primaryColor} />
+          </div>
+        )}
+
         <nav className="flex-1 px-3 py-4 overflow-auto">
-          {desktopSections.map((section, idx) => (
-            <div key={section.key} className={cn('space-y-0.5', idx > 0 && section.label && 'mt-4')}>
-              {section.label && (
-                <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wide text-gray-400">
-                  {section.label}
-                </p>
-              )}
-              {section.items.map(({ label, href, icon: Icon }) => {
+          <div className="space-y-0.5">
+              {visibleItems.map(({ label, href, icon: Icon }) => {
                 const active = isActive(href)
                 return (
                   <Link
@@ -132,8 +120,7 @@ export default function AdminSidebar({
                   </Link>
                 )
               })}
-            </div>
-          ))}
+          </div>
         </nav>
 
         <div className="px-3 pb-4 border-t border-gray-100 pt-3">
