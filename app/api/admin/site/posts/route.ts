@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase-server'
+import { createServiceClient } from '@/lib/supabase-server'
+import { resolveOrgId } from '@/lib/org'
 import { getSession, isAdmin } from '@/lib/auth'
 
 export async function POST(request: Request) {
@@ -13,10 +14,12 @@ export async function POST(request: Request) {
 
   if (!titulo) return NextResponse.json({ error: 'Título obrigatório' }, { status: 400 })
 
-  const supabase = await createClient()
+  const orgId = await resolveOrgId(session.profile)
+  if (!orgId) return NextResponse.json({ error: 'Organização não identificada' }, { status: 400 })
+  const supabase = await createServiceClient()
 
   const { data, error } = await supabase.from('site_posts').insert({
-    org_id: session.profile.org_id,
+    org_id: orgId,
     titulo,
     conteudo: conteudo || null,
     imagem_url: imagem_url || null,

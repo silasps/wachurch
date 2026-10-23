@@ -32,7 +32,7 @@ export function parseTexto(texto: string): Bloco[] {
 }
 
 // **negrito** e *itálico* dentro de uma linha
-function Inline({ texto }: { texto: string }) {
+export function Inline({ texto }: { texto: string }) {
   const partes = texto.split(/(\*\*[^*]+\*\*|\*[^*\s][^*]*\*|_[^_\s][^_]*_)/g).filter(Boolean)
   return (
     <>

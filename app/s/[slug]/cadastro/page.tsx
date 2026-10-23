@@ -10,9 +10,12 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   return { title: org ? `Cadastro de membros · ${org.nome}` : 'Cadastro de membros', robots: { index: false } }
 }
 
-export default async function CadastroPorSlugPage({ params }: { params: Promise<{ slug: string }> }) {
+export default async function CadastroPorSlugPage({ params, searchParams }: {
+  params: Promise<{ slug: string }>
+  searchParams: Promise<{ tipo?: string }>
+}) {
   const { slug } = await params
   const org = await getOrgBySlug(slug)
   if (!org || !orgTemModulo(org, 'igreja')) notFound()
-  return <CadastroView org={org} basePath={`/s/${slug}`} />
+  return <CadastroView org={org} basePath={`/s/${slug}`} tipo={(await searchParams).tipo} />
 }

@@ -97,11 +97,13 @@ interface Props {
   config: MembresiaConfigPublica
   /** Prefixo dos links internos: '' (host do tenant) ou '/s/<slug>' */
   basePath?: string
+  /** Vindo dos botões "Quero ser membro" / "Já sou membro": pula a primeira pergunta */
+  tipoInicial?: 'ja_membro' | 'quer_ser_membro'
 }
 
-export default function CadastroMembroWizard({ igreja, orgSlug, primaryColor, config, basePath = '' }: Props) {
-  const [dados, setDados] = useState<Dados>(VAZIO)
-  const [etapa, setEtapa] = useState<Etapa>('inicio')
+export default function CadastroMembroWizard({ igreja, orgSlug, primaryColor, config, basePath = '', tipoInicial }: Props) {
+  const [dados, setDados] = useState<Dados>(tipoInicial ? { ...VAZIO, tipo: tipoInicial } : VAZIO)
+  const [etapa, setEtapa] = useState<Etapa>(tipoInicial ? etapasDe(tipoInicial)[1] : 'inicio')
   const [erros, setErros] = useState<Record<string, string>>({})
   const [foto, setFoto] = useState<Blob | null>(null)
   const [fotoUrl, setFotoUrl] = useState<string | null>(null)

@@ -1,22 +1,26 @@
 import { requireRole } from '@/lib/auth'
-import { createClient } from '@/lib/supabase-server'
+import { createServiceClient } from '@/lib/supabase-server'
+import { resolveOrgId } from '@/lib/org'
 import { getSiteConfig } from '@/lib/tenant'
 import Link from 'next/link'
 import SiteRenderer from '@/components/public-site/site-renderer'
 import IgrejaPerfil from '@/components/public-site/igreja-perfil'
+import PaginaEditorial from '@/components/public-site/editorial/paginas'
 import { orgTemModulo } from '@/lib/modulos'
-import type { SiteConfig, SitePost } from '@/types'
+import type { Organization, SiteConfig, SitePost } from '@/types'
 
 export default async function SitePreviewPage() {
   const { profile } = await requireRole(['admin', 'superadmin'])
-  const supabase = await createClient()
+  // Org efetiva (a do perfil ou a simulada pelo superadmin) — service client com filtro explícito por org
+  const orgId = await resolveOrgId(profile)
+  const supabase = await createServiceClient()
 
   const [siteConfig, postsResult] = await Promise.all([
-    getSiteConfig(profile.org_id),
+    getSiteConfig(orgId ?? ''),
     supabase
       .from('site_posts')
       .select('*')
-      .eq('org_id', profile.org_id)
+      .eq('org_id', orgId)
       .eq('publicado', true)
       .order('ordem', { ascending: true })
       .order('created_at', { ascending: false }),
@@ -25,8 +29,8 @@ export default async function SitePreviewPage() {
   // Buscar nome da org
   const { data: org } = await supabase
     .from('organizations')
-    .select('nome, modulos, tipo')
-    .eq('id', profile.org_id)
+    .select('*')
+    .eq('id', orgId)
     .single()
 
   if (!siteConfig) {
@@ -48,6 +52,11 @@ export default async function SitePreviewPage() {
   }
 
   const posts = (postsResult.data ?? []) as SitePost[]
+
+  if (org?.tipo === 'igreja' && siteConfig.template_id === 'editorial') {
+    // Links internos por caminho (/s/<slug>/…) — o painel não roda no host da igreja
+    return <PaginaEditorial org={org as Organization} pagina="inicio" basePath={`/s/${org.slug}`} previewMode />
+  }
 
   if (org?.tipo === 'igreja') {
     return (

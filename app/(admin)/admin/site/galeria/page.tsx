@@ -1,17 +1,20 @@
 import { requireRole } from '@/lib/auth'
-import { createClient } from '@/lib/supabase-server'
+import { createServiceClient } from '@/lib/supabase-server'
+import { resolveOrgId } from '@/lib/org'
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
 import GaleriaClient from './galeria-client'
 
 export default async function SiteGaleriaPage() {
   const { profile } = await requireRole(['admin', 'superadmin'])
-  const supabase = await createClient()
+  // Org efetiva (a do perfil ou a simulada pelo superadmin) — service client com filtro explícito por org
+  const orgId = await resolveOrgId(profile)
+  const supabase = await createServiceClient()
 
   const { data: fotos } = await supabase
     .from('site_galeria')
     .select('id, titulo, imagem_url, descricao, created_at')
-    .eq('org_id', profile.org_id)
+    .eq('org_id', orgId)
     .order('created_at', { ascending: false })
 
   return (

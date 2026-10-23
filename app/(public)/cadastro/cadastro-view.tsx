@@ -9,7 +9,8 @@ import CadastroMembroWizard from './cadastro-membro-wizard'
 
 // Usada em /cadastro (host do tenant) e em /s/[slug]/cadastro (qualquer host).
 // basePath: prefixo dos links internos ('' ou '/s/<slug>')
-export default async function CadastroView({ org, basePath = '' }: { org: Organization; basePath?: string }) {
+export default async function CadastroView({ org, basePath = '', tipo }: { org: Organization; basePath?: string; tipo?: string }) {
+  const tipoInicial = tipo === 'ja_membro' || tipo === 'quer_ser_membro' ? tipo : undefined
   const [siteConfig, config] = await Promise.all([getSiteConfig(org.id), getMembresiaConfig(org.id)])
   const cor = coresDoSite(siteConfig).primary
 
@@ -32,7 +33,7 @@ export default async function CadastroView({ org, basePath = '' }: { org: Organi
 
       <div className="max-w-xl mx-auto px-4 py-6 sm:py-10">
         {config.formulario_aberto ? (
-          <CadastroMembroWizard igreja={org.nome} orgSlug={org.slug} primaryColor={cor} config={configPublica} basePath={basePath} />
+          <CadastroMembroWizard igreja={org.nome} orgSlug={org.slug} primaryColor={cor} config={configPublica} basePath={basePath} tipoInicial={tipoInicial} />
         ) : (
           <div className="bg-white rounded-2xl border border-gray-200 p-8 text-center">
             <Lock size={40} className="mx-auto mb-4 text-gray-300" />

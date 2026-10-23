@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { requireRole } from '@/lib/auth'
+import { resolveOrgId } from '@/lib/org'
 import { CONTENT_TYPE_WEBP, ehImagemRaster, paraWebp } from '@/lib/imagem-server'
 import { createServiceClient } from '@/lib/supabase-server'
 
@@ -18,6 +19,8 @@ async function ensureBucket(supabase: Awaited<ReturnType<typeof createServiceCli
 
 export async function POST(req: Request) {
   const { profile } = await requireRole(['admin', 'superadmin'])
+  const orgId = await resolveOrgId(profile)
+  if (!orgId) return NextResponse.json({ error: 'Organização não identificada' }, { status: 400 })
 
   const formData = await req.formData()
   const file = formData.get('file') as File | null
@@ -40,7 +43,7 @@ export async function POST(req: Request) {
   } catch {
     return NextResponse.json({ error: 'Não foi possível processar esta imagem' }, { status: 400 })
   }
-  const path = `${profile.org_id}/${slot}-${Date.now()}.${svg ? 'svg' : 'webp'}`
+  const path = `${orgId}/${slot}-${Date.now()}.${svg ? 'svg' : 'webp'}`
 
   const { error } = await supabase.storage
     .from(BUCKET)

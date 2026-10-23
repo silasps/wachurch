@@ -14,6 +14,9 @@ const DIAS = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quint
 
 export default function IgrejaPerfilForm({ config }: { config: SiteConfig | null }) {
   const [bio, setBio] = useState(config?.bio ?? '')
+  const [nomeCurto, setNomeCurto] = useState(config?.nome_curto ?? '')
+  const [boasVindas, setBoasVindas] = useState(config?.boas_vindas ?? '')
+  const [slogan, setSlogan] = useState(config?.slogan ?? '')
   const [denominacao, setDenominacao] = useState(config?.denominacao ?? '')
   const [anoFundacao, setAnoFundacao] = useState(config?.ano_fundacao ? String(config.ano_fundacao) : '')
   const [capaUrl, setCapaUrl] = useState(config?.capa_url ?? '')
@@ -50,6 +53,9 @@ export default function IgrejaPerfilForm({ config }: { config: SiteConfig | null
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           bio: bio.trim() || null,
+          nome_curto: nomeCurto.trim() || null,
+          boas_vindas: boasVindas.trim() || null,
+          slogan: slogan.trim() || null,
           denominacao: denominacao.trim() || null,
           ano_fundacao: anoFundacao ? Number(anoFundacao) : null,
           capa_url: capaUrl || null,
@@ -83,6 +89,21 @@ export default function IgrejaPerfilForm({ config }: { config: SiteConfig | null
         </div>
         <div className="grid sm:grid-cols-2 gap-4">
           <div>
+            <label htmlFor="nome-curto" className={label}>Nome curto / sigla</label>
+            <input id="nome-curto" value={nomeCurto} onChange={e => setNomeCurto(e.target.value)} maxLength={30} placeholder="Ex.: SIBALT" className={input} />
+          </div>
+          <div>
+            <label htmlFor="boas-vindas" className={label}>Linha de boas-vindas</label>
+            <input id="boas-vindas" value={boasVindas} onChange={e => setBoasVindas(e.target.value)} maxLength={60} placeholder="Aqui há lugar para você" className={input} />
+          </div>
+        </div>
+        <div>
+          <label htmlFor="slogan" className={label}>Slogan (frase principal do topo)</label>
+          <input id="slogan" value={slogan} onChange={e => setSlogan(e.target.value)} maxLength={140} placeholder="Se vazio, usa a frase de apresentação" className={input} />
+          <p className="mt-1 text-xs text-gray-500">Usados no layout Editorial (Site → Aparência).</p>
+        </div>
+        <div className="grid sm:grid-cols-2 gap-4">
+          <div>
             <label htmlFor="den" className={label}>Denominação</label>
             <input id="den" value={denominacao} onChange={e => setDenominacao(e.target.value)} placeholder="Ex.: Batista" className={input} />
           </div>
@@ -102,7 +123,10 @@ export default function IgrejaPerfilForm({ config }: { config: SiteConfig | null
               {DIAS.map(d => <option key={d}>{d}</option>)}
             </select>
             <input type="time" value={h.hora} onChange={e => editarLista(horarios, setHorarios, i, 'hora', e.target.value)} className={input} aria-label="Hora" />
-            <input value={h.nome} onChange={e => editarLista(horarios, setHorarios, i, 'nome', e.target.value)} placeholder="Ex.: Culto da família" className={`${input} col-span-2 sm:col-span-1 order-last sm:order-none`} aria-label="Nome do culto" />
+            <div className="col-span-2 sm:col-span-1 order-last sm:order-none grid grid-cols-[1fr_7rem] gap-2">
+              <input value={h.nome} onChange={e => editarLista(horarios, setHorarios, i, 'nome', e.target.value)} placeholder="Ex.: Culto da família" className={input} aria-label="Nome do culto" />
+              <input value={h.publico ?? ''} onChange={e => editarLista(horarios, setHorarios, i, 'publico', e.target.value)} placeholder="Público" maxLength={16} className={input} aria-label="Público (ex.: Jovens)" />
+            </div>
             <button type="button" onClick={() => setHorarios(horarios.filter((_, idx) => idx !== i))} className="p-2 text-gray-400 hover:text-red-600" aria-label="Remover horário">
               <Trash2 size={16} />
             </button>
@@ -151,7 +175,7 @@ export default function IgrejaPerfilForm({ config }: { config: SiteConfig | null
         <label htmlFor="historia" className="font-semibold text-gray-900 block">Nossa história</label>
         <textarea id="historia" value={historia} onChange={e => setHistoria(e.target.value)} rows={8} placeholder="Como a igreja começou, marcos importantes, quem somos hoje…" className={input} />
         <p className="text-xs text-gray-500">
-          Dicas de formatação: <code># Título</code> numa linha sozinha · <code>**negrito**</code> · um parágrafo inteiro em <code>**negrito**</code> vira citação em destaque · linhas começando com <code>- </code> viram lista. Deixe uma linha em branco entre parágrafos.
+          Dicas de formatação: <code># Título</code> numa linha sozinha · <code>## Capítulo</code> abre um capítulo na página História · <code>**negrito**</code> · um parágrafo inteiro em <code>**negrito**</code> vira citação em destaque · linhas começando com <code>- </code> viram lista. Deixe uma linha em branco entre parágrafos.
         </p>
       </div>
 
@@ -163,6 +187,7 @@ export default function IgrejaPerfilForm({ config }: { config: SiteConfig | null
             <div className="space-y-2">
               <input value={l.nome} onChange={e => editarLista(lideranca, setLideranca, i, 'nome', e.target.value)} placeholder="Nome" className={input} aria-label="Nome" />
               <input value={l.cargo} onChange={e => editarLista(lideranca, setLideranca, i, 'cargo', e.target.value)} placeholder="Ex.: Pastor titular" className={input} aria-label="Cargo" />
+              <textarea value={l.mensagem ?? ''} onChange={e => editarLista(lideranca, setLideranca, i, 'mensagem', e.target.value)} rows={2} maxLength={400} placeholder="Mensagem curta (opcional) — aparece no destaque de liderança" className={input} aria-label="Mensagem" />
               <button type="button" onClick={() => setLideranca(lideranca.filter((_, idx) => idx !== i))} className="text-xs text-red-600">Remover</button>
             </div>
           </div>

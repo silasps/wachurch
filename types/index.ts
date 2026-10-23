@@ -19,6 +19,8 @@ export type SiteTemplate =
   | 'institucional'
   | 'colorido'
   | 'galeria'
+  | 'perfil'
+  | 'editorial'
 
 export type CorPrimaria =
   | 'azul-oceano'
@@ -278,6 +280,11 @@ export interface SiteConfig {
   // Cor exata da marca e tema (0012)
   cor_personalizada: string | null
   tema: 'claro' | 'escuro'
+  // Layout editorial (0014)
+  nome_curto: string | null
+  boas_vindas: string | null
+  slogan: string | null
+  logo_horizontal_url: string | null
   // Perfil da igreja (0011)
   bio: string | null
   capa_url: string | null
@@ -293,12 +300,16 @@ export interface HorarioCulto {
   dia: string
   hora: string
   nome: string
+  /** Público do culto, exibido como etiqueta (ex.: Geral, Jovens) */
+  publico?: string
 }
 
 export interface Lider {
   nome: string
   cargo: string
   foto_url: string
+  /** Mensagem curta exibida no destaque de liderança */
+  mensagem?: string
 }
 
 export interface SitePost {

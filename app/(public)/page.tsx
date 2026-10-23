@@ -4,6 +4,7 @@ import { resolveOrgFromHost, getSiteConfig } from '@/lib/tenant'
 import { LandingPage } from './_components/landing-page'
 import SiteRenderer from '@/components/public-site/site-renderer'
 import IgrejaPerfil from '@/components/public-site/igreja-perfil'
+import PaginaEditorial from '@/components/public-site/editorial/paginas'
 import { orgTemModulo } from '@/lib/modulos'
 import type { SitePost } from '@/types'
 
@@ -36,6 +37,10 @@ export default async function PublicHomePage() {
   }
 
   const posts = await getPublishedPosts(tenantResult.org.id)
+
+  if (tenantResult.org.tipo === 'igreja' && siteConfig.template_id === 'editorial') {
+    return <PaginaEditorial org={tenantResult.org} pagina="inicio" basePath="" />
+  }
 
   if (tenantResult.org.tipo === 'igreja') {
     return (

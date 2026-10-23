@@ -1,16 +1,19 @@
 import { requireRole } from '@/lib/auth'
-import { createClient } from '@/lib/supabase-server'
+import { createServiceClient } from '@/lib/supabase-server'
+import { resolveOrgId } from '@/lib/org'
 import AparenciaForm from './aparencia-form'
 import { getCurrentOrg } from '@/lib/org'
 import type { SiteConfig } from '@/types'
 
 export default async function AparenciaPage() {
   const { profile } = await requireRole(['admin', 'superadmin'])
-  const supabase = await createClient()
+  // Org efetiva (a do perfil ou a simulada pelo superadmin) — service client com filtro explícito por org
+  const orgId = await resolveOrgId(profile)
+  const supabase = await createServiceClient()
 
   const [{ data: config }, { data: org }] = await Promise.all([
-    supabase.from('site_config').select('*').eq('org_id', profile.org_id).single(),
-    supabase.from('organizations').select('slug').eq('id', profile.org_id).single(),
+    supabase.from('site_config').select('*').eq('org_id', orgId).single(),
+    supabase.from('organizations').select('slug').eq('id', orgId).single(),
   ])
 
   const subdomain = org?.slug ? `${org.slug}.ostricksocial.com.br` : ''

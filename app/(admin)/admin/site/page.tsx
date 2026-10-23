@@ -1,5 +1,6 @@
 import { requireRole } from '@/lib/auth'
-import { createClient } from '@/lib/supabase-server'
+import { createServiceClient } from '@/lib/supabase-server'
+import { resolveOrgId } from '@/lib/org'
 import { headers } from 'next/headers'
 import Link from 'next/link'
 import { Palette, Type, Image as ImageIcon, MessageSquare, Link2, Eye, Church } from 'lucide-react'
@@ -10,13 +11,15 @@ import SiteOverviewActions from './_components/site-overview-actions'
 
 export default async function SitePage() {
   const { profile } = await requireRole(['admin', 'superadmin'])
-  const supabase = await createClient()
+  // Org efetiva (a do perfil ou a simulada pelo superadmin) — service client com filtro explícito por org
+  const orgId = await resolveOrgId(profile)
+  const supabase = await createServiceClient()
   const temIgreja = orgTemModulo(await getCurrentOrg(profile), 'igreja')
 
   const [configResult, orgResult, domainsResult] = await Promise.all([
-    supabase.from('site_config').select('*').eq('org_id', profile.org_id).single(),
-    supabase.from('organizations').select('slug').eq('id', profile.org_id).single(),
-    supabase.from('custom_domains').select('domain, verificado').eq('org_id', profile.org_id),
+    supabase.from('site_config').select('*').eq('org_id', orgId).single(),
+    supabase.from('organizations').select('slug').eq('id', orgId).single(),
+    supabase.from('custom_domains').select('domain, verificado').eq('org_id', orgId),
   ])
 
   const siteConfig = configResult.data as SiteConfig | null

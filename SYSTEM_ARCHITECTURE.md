@@ -107,7 +107,14 @@ Fonte de verdade: `supabase/migrations/*.sql`, aplicadas **em ordem numérica**.
 
 14. `0013_areas_usuario.sql` — `profiles.areas`, `membros.profile_id`, função `usuario_tem_area(text)` e policies de `membros` exigindo a área igreja.
 
-**Aplicação das migrations:** `DATABASE_URL` no `.env.local` (Session pooler `aws-0-us-west-2.pooler.supabase.com:5432` — o host `db.<ref>.supabase.co` é só IPv6) e `psql "$DATABASE_URL" -v ON_ERROR_STOP=1 --single-transaction -f supabase/migrations/NNNN_x.sql`. **Nunca `supabase db push`**: o histórico de migrations do Supabase está vazio (tudo foi aplicado à mão) e ele rodaria `0000_drop_all.sql`. Estado em 2026-10-23: 0001–0013 aplicadas (a policy `org_write_superadmin` da 0002 não existe — sintaxe `CREATE POLICY IF NOT EXISTS` inválida; não faz falta pois o superadmin grava via service client).
+15. `0014_layout_editorial.sql` — `site_config.nome_curto`, `boas_vindas`, `slogan`, `logo_horizontal_url`; `template_id` aceita `perfil` e `editorial`.
+
+### Layouts da página da igreja
+- `template_id = 'editorial'` → **Editorial** (multi-página, design system "Warm Sunset Editorial": Playfair Display + Plus Jakarta Sans via `next/font`, tokens `--font-editorial-*` em `globals.css`). Código em `components/public-site/editorial/` (`shell.tsx` = cabeçalho + navegação inferior; `paginas.tsx` = Início, História, Cultos, Membros + carregamento dos dados). Rotas: `/`, `/historia`, `/cultos`, `/membros` no host da igreja (`app/(public)/…`) e `/s/<slug>/…` em qualquer host — ambas via `app/(public)/_components/rota-editorial.tsx`. Cores derivadas da cor da marca (`--ed-pri`, `--ed-pri-forte`, `--ed-pri-clara`…); secundária/terciária/neutros fixos do design system. A página História monta capítulos a partir do Markdown da história (`## Capítulo`, parágrafos em negrito = citações, o último vira o fechamento). Horários geram link "Adicionar à agenda" (Google Agenda semanal, `lib/site-igreja.ts`).
+- Qualquer outro valor → **Perfil** (`igreja-perfil.tsx`, página única, aceita tema escuro).
+- **Regra de conteúdo:** layout no código; conteúdo no painel (Perfil da igreja, Aparência, Galeria). A igreja não edita HTML.
+
+**Aplicação das migrations:** `DATABASE_URL` no `.env.local` (Session pooler `aws-0-us-west-2.pooler.supabase.com:5432` — o host `db.<ref>.supabase.co` é só IPv6) e `psql "$DATABASE_URL" -v ON_ERROR_STOP=1 --single-transaction -f supabase/migrations/NNNN_x.sql`. **Nunca `supabase db push`**: o histórico de migrations do Supabase está vazio (tudo foi aplicado à mão) e ele rodaria `0000_drop_all.sql`. Estado em 2026-10-23: 0001–0014 aplicadas (a policy `org_write_superadmin` da 0002 não existe — sintaxe `CREATE POLICY IF NOT EXISTS` inválida; não faz falta pois o superadmin grava via service client).
 
 ### Módulo Igreja — cadastro de membros (`0010`)
 - **`membros`**: identificação (`nome`, `cpf` só dígitos, `data_nascimento`, `sexo`, `estado_civil`, `foto_path`), contato (`celular`, `celular_whatsapp`, `email`, `endereco` jsonb), `tipo_cadastro` (`ja_membro`|`quer_ser_membro`), `situacao` (`pendente` = disse já ser membro e aguarda conferência · `candidato` = quer ser membro · `ativo` · `inativo` · `recusado`), ingresso (`forma_ingresso` `aclamacao`|`transferencia`|`batismo`|`nao_sei`, `igreja_origem`, `carta_path`, `carta_entrega_presencial`, `carta_recebida`, `fez_curso_integracao`), histórico (`ano_batismo` informado, `data_batismo` registrada pela igreja, `membro_desde_ano`, `data_recepcao`), responsável (menor de 18), `possivel_duplicado_de` (mesmo CPF), `aceita_comunicacoes`, `observacoes_internas`, `aprovado_por/em`. **CPF não é UNIQUE de propósito**: o formulário público não pode revelar se alguém já é membro — envios com CPF repetido entram marcados como possível duplicado e a secretaria mescla.
@@ -334,7 +341,7 @@ VERCEL_OIDC_TOKEN=                     # gerado automaticamente pela Vercel em d
 - Igreja: eventos e inscrições, portal do membro (atualizar os próprios dados), carteirinha digital, famílias/dependentes, ministérios/células, aniversariantes, importação de planilha de membros, exportação CSV/PDF.
 - Módulo financeiro: contas bancárias (`financeiro_contas`), orçamento por projeto, alertas de vencimento, exportação PDF/CSV.
 - Portais de `aluno` e `responsavel` (roles já existem no schema/RBAC, painéis ainda não implementados).
-- Dívida técnica: `alunos.cpf_encrypted` é gravado em texto puro (nome enganoso); páginas antigas do admin (dashboard, financeiro, alunos) usam `profile.org_id` e ficam vazias na impersonação — migrar para `getCurrentOrg()`.
+- Dívida técnica: `alunos.cpf_encrypted` é gravado em texto puro (nome enganoso); algumas páginas antigas do admin (financeiro, alunos, turmas) ainda usam `profile.org_id` e ficam vazias na simulação de acesso — migrar para `resolveOrgId()`/`getCurrentOrg()` (as telas de Site já foram migradas).
 
 ---
 

@@ -20,8 +20,8 @@ export async function generateMetadata(): Promise<Metadata> {
   }
 }
 
-export default async function CadastroMembroPage() {
+export default async function CadastroMembroPage({ searchParams }: { searchParams: Promise<{ tipo?: string }> }) {
   const org = await getTenantIgreja()
   if (!org) notFound()
-  return <CadastroView org={org} />
+  return <CadastroView org={org} tipo={(await searchParams).tipo} />
 }

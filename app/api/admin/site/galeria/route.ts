@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase-server'
+import { createServiceClient } from '@/lib/supabase-server'
+import { resolveOrgId } from '@/lib/org'
 import { getSession, isAdmin } from '@/lib/auth'
 
 export async function POST(request: Request) {
@@ -13,10 +14,12 @@ export async function POST(request: Request) {
 
   if (!imagem_url) return NextResponse.json({ error: 'URL da imagem obrigatória' }, { status: 400 })
 
-  const supabase = await createClient()
+  const orgId = await resolveOrgId(session.profile)
+  if (!orgId) return NextResponse.json({ error: 'Organização não identificada' }, { status: 400 })
+  const supabase = await createServiceClient()
 
   const { data, error } = await supabase.from('site_galeria').insert({
-    org_id: session.profile.org_id,
+    org_id: orgId,
     titulo: titulo || null,
     imagem_url,
     descricao: descricao || null,
@@ -36,13 +39,15 @@ export async function DELETE(request: Request) {
   const { id } = await request.json()
   if (!id) return NextResponse.json({ error: 'ID obrigatório' }, { status: 400 })
 
-  const supabase = await createClient()
+  const orgId = await resolveOrgId(session.profile)
+  if (!orgId) return NextResponse.json({ error: 'Organização não identificada' }, { status: 400 })
+  const supabase = await createServiceClient()
 
   const { error } = await supabase
     .from('site_galeria')
     .delete()
     .eq('id', id)
-    .eq('org_id', session.profile.org_id)
+    .eq('org_id', orgId)
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 

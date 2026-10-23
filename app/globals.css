@@ -40,3 +40,9 @@ body {
   50% { opacity: 0.4; }
 }
 .animate-pulse { animation: pulse 1.8s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+
+/* Layout editorial do site da igreja — fontes carregadas via next/font (components/public-site/editorial/fontes.ts) */
+@theme inline {
+  --font-editorial-titulo: var(--font-playfair), Georgia, serif;
+  --font-editorial-texto: var(--font-jakarta), system-ui, sans-serif;
+}

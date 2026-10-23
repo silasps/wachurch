@@ -3,6 +3,7 @@ import { getSiteConfig, getOrgBySlug } from '@/lib/tenant'
 import { LandingPage } from '@/app/(public)/_components/landing-page'
 import SiteRenderer from '@/components/public-site/site-renderer'
 import IgrejaPerfil from '@/components/public-site/igreja-perfil'
+import PaginaEditorial from '@/components/public-site/editorial/paginas'
 import { orgTemModulo } from '@/lib/modulos'
 import type { SitePost } from '@/types'
 import { notFound } from 'next/navigation'
@@ -40,6 +41,10 @@ export default async function PublicSiteBySlug({
   }
 
   const posts = await getPublishedPosts(org.id)
+
+  if (org.tipo === 'igreja' && siteConfig.template_id === 'editorial') {
+    return <PaginaEditorial org={org} pagina="inicio" basePath={`/s/${org.slug}`} />
+  }
 
   if (org.tipo === 'igreja') {
     return (

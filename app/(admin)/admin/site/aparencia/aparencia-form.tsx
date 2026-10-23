@@ -8,6 +8,12 @@ import { corPredominante } from '@/lib/imagem'
 import type { SiteConfig, SiteTemplate, CorPrimaria } from '@/types'
 import { LogoUploader } from './logo-uploader'
 
+// Layouts da página da igreja
+const TEMPLATES_IGREJA: { id: SiteTemplate; label: string; desc: string; emoji: string }[] = [
+  { id: 'editorial', label: 'Editorial', desc: 'Várias páginas (Início, História, Cultos, Membros), visual de revista', emoji: '📖' },
+  { id: 'perfil',    label: 'Perfil',    desc: 'Página única estilo Instagram, aceita tema escuro', emoji: '📱' },
+]
+
 const TEMPLATES: { id: SiteTemplate; label: string; desc: string; emoji: string }[] = [
   { id: 'minimalista',   label: 'Minimalista',   desc: 'Clean, foco em texto e missão', emoji: '✦' },
   { id: 'comunitario',   label: 'Comunitário',   desc: 'Hero grande, galeria em destaque', emoji: '🤝' },
@@ -26,7 +32,34 @@ interface Props {
 export default function AparenciaForm({ config, subdomain, ehIgreja = false }: Props) {
   const [loading, setLoading] = useState(false)
   const [saved, setSaved] = useState(false)
-  const [template, setTemplate] = useState<SiteTemplate>(config?.template_id || 'comunitario')
+  const [template, setTemplate] = useState<SiteTemplate>(
+    ehIgreja ? (config?.template_id === 'editorial' ? 'editorial' : 'perfil') : (config?.template_id || 'comunitario')
+  )
+  const [logoHorizontal, setLogoHorizontal] = useState(config?.logo_horizontal_url ?? '')
+  const [enviandoLogoH, setEnviandoLogoH] = useState(false)
+  const [erroLogoH, setErroLogoH] = useState<string | null>(null)
+
+  // Logo por extenso: sem recorte, para manter o fundo transparente (o servidor converte para WebP)
+  async function enviarLogoHorizontal(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    setEnviandoLogoH(true)
+    setErroLogoH(null)
+    try {
+      const fd = new FormData()
+      fd.append('file', file)
+      fd.append('slot', 'logo-horizontal')
+      const res = await fetch('/api/admin/site/imagem', { method: 'POST', body: fd })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Erro no envio')
+      setLogoHorizontal(data.url)
+    } catch (err) {
+      setErroLogoH(err instanceof Error ? err.message : 'Erro no envio')
+    } finally {
+      setEnviandoLogoH(false)
+    }
+  }
   const [cor, setCor] = useState<CorPrimaria>(config?.cor_primaria || 'azul-oceano')
   const [publicado, setPublicado] = useState(config?.publicado ?? false)
   const [logoUrl, setLogoUrl] = useState(config?.logo_url || '')
@@ -61,6 +94,7 @@ export default function AparenciaForm({ config, subdomain, ehIgreja = false }: P
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           template_id: template, cor_primaria: cor, publicado, logo_url: logoUrl || null,
+          ...(ehIgreja ? { logo_horizontal_url: logoHorizontal || null } : {}),
           cor_personalizada: ehHex(corPersonalizada) ? corPersonalizada.toLowerCase() : null,
           ...(ehIgreja ? { tema } : {}),
         }),
@@ -77,8 +111,8 @@ export default function AparenciaForm({ config, subdomain, ehIgreja = false }: P
       {/* Templates */}
       <div className="bg-white rounded-xl border border-gray-200 p-6">
         <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4">Layout do site</h2>
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-          {TEMPLATES.map(t => (
+        <div className={`grid gap-3 ${ehIgreja ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-2 sm:grid-cols-3'}`}>
+          {(ehIgreja ? TEMPLATES_IGREJA : TEMPLATES).map(t => (
             <button
               key={t.id}
               type="button"
@@ -170,8 +204,8 @@ export default function AparenciaForm({ config, subdomain, ehIgreja = false }: P
         <p className="text-xs text-gray-400 mt-2">Cor da marca · Botões com texto branco (ajustada para leitura) · Destaque</p>
       </div>
 
-      {/* Tema da página da igreja */}
-      {ehIgreja && (
+      {/* Tema da página da igreja (layout Perfil) */}
+      {ehIgreja && template === 'perfil' && (
         <div className="bg-white rounded-xl border border-gray-200 p-6">
           <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-1">Tema da página</h2>
           <p className="text-xs text-gray-500 mb-4">Fundo da página pública da igreja.</p>
@@ -205,6 +239,28 @@ export default function AparenciaForm({ config, subdomain, ehIgreja = false }: P
           onSaved={url => setLogoUrl(url)}
         />
       </div>
+
+      {/* Logo por extenso (layout Editorial) */}
+      {ehIgreja && (
+        <div className="bg-white rounded-xl border border-gray-200 p-6">
+          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-1">Logo por extenso</h2>
+          <p className="text-xs text-gray-500 mb-4">Marca horizontal (ex.: símbolo + nome), em PNG ou WebP <strong>sem fundo</strong>. No layout Editorial ela aparece em branco sobre o topo colorido.</p>
+          {logoHorizontal && (
+            <div className="mb-3 p-4 rounded-xl flex items-center justify-center" style={{ background: `linear-gradient(135deg, ${selectedColors.marca}, ${selectedColors.primary})` }}>
+              <img src={logoHorizontal} alt="Logo por extenso" className="h-12 w-auto [filter:brightness(0)_invert(1)]" />
+            </div>
+          )}
+          <div className="flex items-center gap-3">
+            <label className="flex items-center gap-1.5 px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 cursor-pointer">
+              {enviandoLogoH && <Loader2 size={14} className="animate-spin" />}
+              {logoHorizontal ? 'Trocar' : 'Enviar logo'}
+              <input type="file" accept="image/png,image/webp,image/svg+xml" className="hidden" onChange={enviarLogoHorizontal} disabled={enviandoLogoH} />
+            </label>
+            {logoHorizontal && <button type="button" onClick={() => setLogoHorizontal('')} className="text-sm text-red-600 hover:underline">Remover</button>}
+          </div>
+          {erroLogoH && <p className="mt-2 text-xs text-red-600">{erroLogoH}</p>}
+        </div>
+      )}
 
       {/* Publicação */}
       <div className="bg-white rounded-xl border border-gray-200 p-6">
