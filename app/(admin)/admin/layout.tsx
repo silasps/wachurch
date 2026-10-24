@@ -1,4 +1,5 @@
 import { requireRole } from '@/lib/auth'
+import { redirect } from 'next/navigation'
 import { headers, cookies } from 'next/headers'
 import { resolveOrgFromHost, getSiteConfig } from '@/lib/tenant'
 import { createServiceClient } from '@/lib/supabase-server'
@@ -31,6 +32,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   // Módulos da licença da org efetiva (a do perfil ou a impersonada)
   const currentOrg = await getCurrentOrg(profile)
+  // Superadmin sem organização escolhida (a simulação expira em 4h ou ao sair): escolher na lista
+  if (profile.role === 'superadmin' && !currentOrg) redirect('/superadmin/organizacoes')
   const modulosOrg = modulosDaOrg(currentOrg)
   const areas = areasDoUsuario(profile, currentOrg)
   const areaAtiva = await getAreaAtiva(profile, currentOrg)
